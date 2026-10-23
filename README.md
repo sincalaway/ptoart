@@ -18,6 +18,12 @@
 
 这些是工程与输出控制改进，不是新训练模型。默认仍输出 **256×256 的人脸裁剪头像**；不会自动获得高清效果、多人合照完整输出或新绘画风格。多张脸沿用上游的最大脸选择策略。
 
+## Windows exe 自动构建
+
+仓库的 **Actions → Windows EXE** 会在默认分支推送时自动生成 Windows x64 CPU 便携包，也可手动点击 **Run workflow**。成功运行后，在 **Artifacts** 下载 `ptoart-windows-x64-cpu`，解压下载包及其中的 ZIP；保留 `ptoart.exe` 与 `_internal` 文件夹在一起，无需安装 Python。产物保留 30 天。
+
+这是命令行 exe，不是图形界面；包含 Torch、ONNX Runtime、TensorFlow 和使用 SFD 的人脸处理依赖，不包含 dlib、CUDA 或官方模型权重。打包冒烟测试不等于官方模型真实出图验收。使用方法及限制见 [Windows 便携版说明](packaging/WINDOWS-README.md)。
+
 ## 安装
 
 推荐 Python 3.11 的独立虚拟环境。基础包适配 Python 3.10+，CI 配置覆盖 3.10–3.12；这不表示所有机器学习依赖组合都已验收。
