@@ -1,0 +1,7 @@
+include LICENSE README.md README_EN.md cog.yaml pyproject.toml
+include train.py test.py test_onnx.py data_process.py predict.py dataset.py
+recursive-include docs *.md *.txt
+recursive-include images *.jpg *.png
+recursive-include dataset *.md
+recursive-include tests *.py
+recursive-include .github *.yml

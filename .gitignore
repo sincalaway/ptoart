@@ -142,3 +142,11 @@ experiment/
 upload/
 models_src/
 photo2cartoon_resources.zip
+
+# ptoart local artifacts and external model assets
+*.onnx
+__pycache__/
+.ruff_cache/
+weights/
+output/
+*.zip

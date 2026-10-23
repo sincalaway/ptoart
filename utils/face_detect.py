@@ -7,7 +7,11 @@ import face_alignment
 class FaceDetect:
     def __init__(self, device, detector):
         # landmarks will be detected by face_alignment library. Set device = 'cuda' if use GPU.
-        self.fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, device=device, face_detector=detector)
+        landmarks_type = face_alignment.LandmarksType
+        two_d = getattr(landmarks_type, 'TWO_D', None)
+        if two_d is None:
+            two_d = getattr(landmarks_type, '_2D')
+        self.fa = face_alignment.FaceAlignment(two_d, device=device, face_detector=detector)
 
     def align(self, image):
         landmarks = self.__get_max_face_landmarks(image)
@@ -20,7 +24,7 @@ class FaceDetect:
 
     def __get_max_face_landmarks(self, image):
         preds = self.fa.get_landmarks(image)
-        if preds is None:
+        if preds is None or len(preds) == 0:
             return None
 
         elif len(preds) == 1:
@@ -43,7 +47,11 @@ class FaceDetect:
         # rotation angle
         left_eye_corner = landmarks[36]
         right_eye_corner = landmarks[45]
-        radian = np.arctan((left_eye_corner[1] - right_eye_corner[1]) / (left_eye_corner[0] - right_eye_corner[0]))
+        eye_delta_x = left_eye_corner[0] - right_eye_corner[0]
+        eye_delta_y = left_eye_corner[1] - right_eye_corner[1]
+        # Coincident horizontal coordinates do not define a stable roll angle;
+        # leave the image unrotated rather than dividing by zero.
+        radian = 0.0 if eye_delta_x == 0 else np.arctan(eye_delta_y / eye_delta_x)
 
         # image size after rotating
         height, width, _ = image.shape

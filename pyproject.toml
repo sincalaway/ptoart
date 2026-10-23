@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ptoart"
+version = "0.1.0"
+description = "Maintainable portrait-to-cartoon inference based on photo2cartoon"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+dependencies = ["numpy>=1.24,<3", "opencv-python-headless>=4.8,<5", "Pillow>=10.4,<13"]
+
+[project.optional-dependencies]
+torch = ["torch>=2.2,<3"]
+onnx = ["onnxruntime>=1.17,<2"]
+face = ["face-alignment>=1.4,<2", "tensorflow>=2.15,<3", "dlib>=19.24"]
+train = ["torch>=2.2,<3", "torchvision>=0.17", "scipy>=1.11", "tqdm>=4.66"]
+dev = ["pytest>=8,<10", "ruff>=0.9,<1", "build>=1.2"]
+
+[project.scripts]
+ptoart = "ptoart.cli:main"
+
+[tool.setuptools]
+py-modules = ["dataset"]
+
+[tool.setuptools.packages.find]
+include = ["ptoart*", "models*", "utils*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+"models/*" = ["F"]
+"utils/*" = ["F"]

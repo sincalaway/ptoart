@@ -1,160 +1,128 @@
-<div align='center'>
-  <img src='./images/title.png'>
-</div>
+# ptoart
 
-# 人像卡通化 (Photo to Cartoon)
+将人像照片转换为卡通头像的 Python 工具，基于 [minivision-ai/photo2cartoon](https://github.com/minivision-ai/photo2cartoon) 重构。保留原始生成器与训练算法，在其外层建立可复用、可测试的推理管线。
 
-**中文版** | [English Version](README_EN.md)
+**当前版本：0.1.0，工程重构预览版。** 已提供无权重回归测试和随机权重网络冒烟测试；未完成官方预训练权重、完整人脸检测/分割链路、GPU 或训练的端到端验收。不能将测试通过理解为真实出图质量或生产稳定性承诺。模型权重不在代码包内。
 
-该项目为[小视科技](https://www.minivision.cn/)卡通肖像探索项目。您可使用微信扫描下方二维码或搜索“AI卡通秀”小程序体验卡通化效果。
+## 这次改了什么
 
-<div>
-  <img src='./images/QRcode.jpg' height='150px' width='150px'>
-</div>
+| 原有问题 | ptoart 的处理 |
+| --- | --- |
+| Torch、ONNX、部署脚本重复推理逻辑 | 统一 `ArtPipeline`，后端通过 `run()` 接口扩展 |
+| 导入测试脚本就解析命令并执行工作 | 安全导入，命令从 `main()` 启动 |
+| 每个请求重新加载模型 | 一个管线顺序复用模型，显式关闭资源 |
+| 路径依赖当前工作目录 | 可指定模型目录/权重路径；兼容入口相对脚本定位 |
+| 坏图、无脸或保存失败难以定位 | 分类异常、批次逐项结果、非零退出码 |
+| 没有扩展输出方式 | RGB 背景色、透明 PNG、风格混合强度 |
+| 没有回归保障 | pytest、静态检查、多 Python 版本 CI 配置 |
 
-也可以前往我们的ai开放平台进行在线体验：[https://ai.minivision.cn/#/coreability/cartoon](https://ai.minivision.cn/#/coreability/cartoon)
+这些是工程与输出控制改进，不是新训练模型。默认仍输出 **256×256 的人脸裁剪头像**；不会自动获得高清效果、多人合照完整输出或新绘画风格。多张脸沿用上游的最大脸选择策略。
 
-技术交流QQ群：937627932
+## 安装
 
-**Updates**
-- `2021.12.2`: [在Replicate平台体验](https://beta.replicate.ai/hao-qiang/photo2cartoon)
-- `2020.12.2`: 开源基于paddlepaddle的项目[photo2cartoon-paddle](https://github.com/minivision-ai/photo2cartoon-paddle)。
-- `2020.12.1`: 增加onnx测试模型, 详情请见 [test_onnx.py](./test_onnx.py)。
+推荐 Python 3.11 的独立虚拟环境。基础包适配 Python 3.10+，CI 配置覆盖 3.10–3.12；这不表示所有机器学习依赖组合都已验收。
 
-## 简介
-人像卡通风格渲染的目标是，在保持原图像ID信息和纹理细节的同时，将真实照片转换为卡通风格的非真实感图像。我们的思路是，从大量照片/卡通数据中习得照片到卡通画的映射。一般而言，基于成对数据的pix2pix方法能达到较好的图像转换效果，但本任务的输入输出轮廓并非一一对应，例如卡通风格的眼睛更大、下巴更瘦；且成对的数据绘制难度大、成本较高，因此我们采用unpaired image translation方法来实现。
-
-Unpaired image translation流派最经典方法是CycleGAN，但原始CycleGAN的生成结果往往存在较为明显的伪影且不稳定。近期的论文U-GAT-IT提出了一种归一化方法——AdaLIN，能够自动调节Instance Norm和Layer Norm的比重，再结合attention机制能够实现精美的人像日漫风格转换。
-
-与夸张的日漫风不同，我们的卡通风格更偏写实，要求既有卡通画的简洁Q萌，又有明确的身份信息。为此我们增加了Face ID Loss，使用预训练的人脸识别模型提取照片和卡通画的ID特征，通过余弦距离来约束生成的卡通画。
-
-此外，我们提出了一种Soft-AdaLIN（Soft Adaptive Layer-Instance Normalization）归一化方法，在反规范化时将编码器的均值方差（照片特征）与解码器的均值方差（卡通特征）相融合。
-
-模型结构方面，在U-GAT-IT的基础上，我们在编码器之前和解码器之后各增加了2个hourglass模块，渐进地提升模型特征抽象和重建能力。
-
-由于实验数据较为匮乏，为了降低训练难度，我们将数据处理成固定的模式。首先检测图像中的人脸及关键点，根据人脸关键点旋转校正图像，并按统一标准裁剪，再将裁剪后的头像输入人像分割模型去除背景。
-
-<div align='center'>
-  <img src='./images/results.png'>
-</div>
-
-## Start
-
-### 安装依赖库
-项目所需的主要依赖库如下：
-- python 3.6
-- pytorch 1.4
-- tensorflow-gpu 1.14
-- face-alignment
-- dlib
-- onnxruntime
-
-### Clone：
-```
-git clone https://github.com/minivision-ai/photo2cartoon.git
-cd ./photo2cartoon
+```bash
+cd ptoart
+python -m venv .venv
+# Linux/macOS
+source .venv/bin/activate
+# Windows PowerShell 请改用：.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -e '.[torch,face]'
 ```
 
-### 下载资源
-[谷歌网盘](https://drive.google.com/open?id=1lsQS8hOCquMFKJFhK_z-n03ixWGkjT2P) | [百度网盘](https://pan.baidu.com/s/1MsT3-He3UGipKhUi4OcCJw) 提取码:y2ch
+dlib 可能需要 C++ 编译器和 CMake。GPU 版 Torch、TensorFlow、ONNX Runtime 需按各自平台选择，不应盲目安装多个冲突的 CPU/GPU 包。仅处理已经对齐的头像，可以只安装 `.[torch]` 并显式使用 `--aligned`。ONNX 推理改装 `.[onnx,face]`；完整预处理仍使用 face-alignment/Torch 和 TensorFlow，**并非纯 ONNX 依赖链**。
 
-1. 人像卡通化预训练模型：photo2cartoon_weights.pt(20200504更新)，存放在`models`路径下。
-2. 头像分割模型：seg_model_384.pb，存放在`utils`路径下。
-3. 人脸识别预训练模型：model_mobilefacenet.pth，存放在`models`路径下。（From: [InsightFace_Pytorch](https://github.com/TreB1eN/InsightFace_Pytorch)）
-4. 卡通画开源数据：`cartoon_data`，包含`trainB`和`testB`。
-5. 人像卡通化onnx模型：photo2cartoon_weights.onnx [谷歌网盘](https://drive.google.com/file/d/1PhwKDUhiq8p-UqrfHCqj257QnqBWD523/view?usp=sharing)，存放在`models`路径下。
+## 模型准备
 
-### 测试
-将一张测试照片（亚洲年轻女性）转换为卡通风格：
-```
-python test.py --photo_path ./images/photo_test.jpg --save_path ./images/cartoon_result.png
+从[模型说明](docs/MODELS.md)中的上游入口取得权重，默认放在：
+
+```text
+~/.cache/ptoart/models/
+├── photo2cartoon_weights.pt      # Torch 后端
+├── photo2cartoon_weights.onnx    # ONNX 后端，二选一
+└── seg_model_384.pb              # 普通照片预处理必需
 ```
 
-### 测试onnx模型
-```
-python test_onnx.py --photo_path ./images/photo_test.jpg --save_path ./images/cartoon_result.png
-```
+也可设置 `PTOART_MODEL_DIR`，或传 `--model-dir /path/to/models`。参数优先于环境变量，单文件 `--weights` / `--segmentation` 优先于目录。相对路径基于当前工作目录解析。
 
-### 训练
-**1.数据准备**
-
-训练数据包括真实照片和卡通画像，为降低训练复杂度，我们对两类数据进行了如下预处理：
-- 检测人脸及关键点。
-- 根据关键点旋转校正人脸。
-- 将关键点边界框按固定的比例扩张并裁剪出人脸区域。
-- 使用人像分割模型将背景置白。
-
-<div align='center'>
-  <img src='./images/data_process.jpg'>
-</div>
-
-我们开源了204张处理后的卡通画数据，您还需准备约1000张人像照片（为匹配卡通数据，尽量使用亚洲年轻女性照片，人脸大小最好超过200x200像素），使用以下命令进行预处理：
-
-```
-python data_process.py --data_path YourPhotoFolderPath --save_path YourSaveFolderPath
+```bash
+ptoart doctor --model-dir ./weights
 ```
 
-将处理后的数据按照以下层级存放，`trainA`、`testA`中存放照片头像数据，`trainB`、`testB`中存放卡通头像数据。
+`doctor` 只检查依赖模块和文件是否存在，不加载模型，不测试 CUDA、模型完整性或出图质量。缺项返回退出码 2；检查通过返回 0。
 
-```
-├── dataset
-    └── photo2cartoon
-        ├── trainA
-            ├── xxx.jpg
-            ├── yyy.png
-            └── ...
-        ├── trainB
-            ├── zzz.jpg
-            ├── www.png
-            └── ...
-        ├── testA
-            ├── aaa.jpg 
-            ├── bbb.png
-            └── ...
-        └── testB
-            ├── ccc.jpg 
-            ├── ddd.png
-            └── ...
+## 单图转换
+
+```bash
+ptoart convert ./images/photo_test.jpg ./output/avatar.png --model-dir ./weights
+# 切换 ONNX 后端
+ptoart convert portrait.jpg avatar.png --backend onnx --model-dir ./weights
+# 透明背景（仅支持 PNG、WebP 或 TIFF 输出）
+ptoart convert portrait.jpg avatar.png --background transparent --model-dir ./weights
+# 浅蓝背景，卡通/原始裁剪头像混合
+ptoart convert portrait.jpg avatar.png --background DCEEFF --strength 0.7 --model-dir ./weights
 ```
 
-**2.训练**
+`strength` 在 0–1 之间：1 为完整模型输出，0 为原始裁剪头像；这是后处理混合，不是模型条件控制。默认白色背景；透明度来自原有分割掩码，发丝边缘质量仍由分割模型决定。
 
-重新训练:
-```
-python train.py --dataset photo2cartoon
-```
+若你已经准备好**对齐、裁剪的正方形头像**，可使用 `--aligned` 跳过检测/分割。此模式将整个头像视为不透明，不会自动抠图；把完整照片当作对齐头像会降低效果。
 
-加载预训练参数:
-```
-python train.py --dataset photo2cartoon --pretrained_weights models/photo2cartoon_weights.pt
-```
+读取支持 EXIF 方向、灰度和透明输入；输入透明区域先合成为白色。默认限制 2500 万像素，可用 `--max-pixels` 调整。输出默认不覆盖，使用 `--overwrite` 才可替换目标；CLI 始终拒绝输入与输出为同一路径。
 
-多GPU训练(仍建议使用batch_size=1，单卡训练):
-```
-python train.py --dataset photo2cartoon --batch_size 4 --gpu_ids 0 1 2 3
+## 批量转换
+
+```bash
+ptoart batch ./photos ./output --recursive --model-dir ./weights --report ./batch-report.json
 ```
 
-## Q&A
-#### Q：为什么开源的卡通化模型与小程序中的效果有差异？
+批处理顺序复用同一模型；单图损坏、无脸等错误不会阻断其他图片。保留相对目录，`person.jpg` 输出为 `person.jpg.png`，避免与 `person.png` 冲突。嵌套在输入目录内的输出目录会被跳过；不允许输出目录等于或包含输入目录。已有图片默认记为失败，不悄悄覆盖。JSON 报告同样拒绝覆盖已有文件。
 
-A：开源模型的训练数据收集自互联网，为了得到更加精美的效果，我们在训练小程序中卡通化模型时，采用了定制的卡通画数据（200多张），且增大了输入分辨率。此外，小程序中的人脸特征提取器采用自研的识别模型，效果优于本项目使用的开源识别模型。
+退出码：0 全部成功；1 批次中有失败；2 参数、初始化、空输入或其他命令级错误。JSON 包含每项输入/输出、状态、错误类型及汇总。
 
-#### Q：如何选取效果最好的模型？
+## Python API
 
-A：首先训练模型200k iterations，然后使用FID指标挑选出最优模型，最终挑选出的模型为迭代90k iterations时的模型。
+```python
+from ptoart import ArtConfig, ArtPipeline
 
-#### Q：关于人脸特征提取模型。
+config = ArtConfig(model_dir="./weights", strength=0.85)
+with ArtPipeline(config) as pipeline:
+    pipeline.convert_file("portrait.jpg", "avatar.png")
+    # 重复调用复用已加载模型
+    pipeline.convert_file("another.jpg", "another.png")
+```
 
-A：实验中我们发现，使用自研的识别模型计算Face ID Loss训练效果远好于使用开源识别模型，若训练效果出现鲁棒性问题，可尝试将Face ID Loss权重置零。
+`convert()` 接收 `uint8 H×W×3 RGB`，返回 `uint8 256×256×3 RGB`，透明背景则返回 RGBA。使用 `NoFaceError` / `ImageError` / `ModelError` 分别处理失败。一个管线用于一个顺序工作者；不要在多个线程中共享实例。`close()` 或上下文管理器释放会话及网络引用，不保证立即归还底层框架缓存的所有显存。
 
-#### Q：人像分割模型是否能用与分割半身像？
-A：不能。该模型是针对本项目训练的专用模型，需先裁剪出人脸区域再输入。
+## 旧项目迁移
 
-## Tips
-我们开源的模型是基于亚洲年轻女性训练的，对于其他人群覆盖不足，您可根据使用场景自行收集相应人群的数据进行训练。我们的[开放平台](https://ai.minivision.cn/#/coreability/cartoon)提供了能够覆盖各类人群的卡通化服务，您可前往体验。如有定制卡通风格需求请联系商务:18852075216。
+旧调用仍保留，权重位置沿用原项目：
 
-## 参考
-U-GAT-IT: Unsupervised Generative Attentional Networks with Adaptive Layer-Instance Normalization for Image-to-Image Translation [[Paper](https://arxiv.org/abs/1907.10830)][[Code](https://github.com/znxlwm/UGATIT-pytorch)]
+```bash
+python test.py --photo_path ./images/photo_test.jpg --save_path ./output/avatar.png
+python test_onnx.py --photo_path ./images/photo_test.jpg --save_path ./output/avatar.png
+```
 
-[InsightFace_Pytorch](https://github.com/TreB1eN/InsightFace_Pytorch)
+这两个入口的 `Photo2Cartoon.inference(RGB)` 仍返回 BGR；新版 `ArtPipeline` 返回 RGB。原有覆盖目标文件的行为改为默认拒绝；需要覆盖时请使用新版 CLI 的 `--overwrite`。旧资源文件名没有强行改名，以继续兼容官方 checkpoint。
 
+训练与损失函数保留在 `train.py` / `models/`。原数据目录名 `photo2cartoon` 是兼容默认值，也可以将数据放到 `dataset/ptoart/{trainA,trainB,testA,testB}` 并执行 `python train.py --dataset ptoart`。训练额外依赖 `.[train]` 和 MobileFaceNet 权重，仍需要 GPU；未完成现代依赖下的训练验收。旧辅助代码的已知遗留限制见[重构分析](docs/REFACTOR.md)。
+
+`predict.py` 与 `cog.yaml` 是可选 Cog 部署适配，已改为 `setup()` 复用管线；候选容器配置未经过构建和线上验证。
+
+## 开发与验证
+
+```bash
+pip install -e '.[dev]'
+ruff check ptoart tests test.py test_onnx.py data_process.py predict.py
+pytest -q
+python -m build
+```
+
+没有 Torch 时，网络冒烟测试会明确跳过。真实权重验收前，还需要比对上游/ptoart 结果、Torch/ONNX 输出误差、CPU/GPU 行为、峰值内存、连续处理和不同人群效果；不应以随机权重测试代替这些工作。交付时的实际验证结果见 [VALIDATION.md](docs/VALIDATION.md)。
+
+## 来源与许可
+
+保留上游 MIT [LICENSE](LICENSE)，上游基线为 `6204e27a71620500c2f5b2ffd36646b0e2e5c110`。原中文和英文说明存档于 `docs/UPSTREAM_README_*.md`，其中的相对链接是上游历史记录，使用以本文为准。模型和数据的下载、再分发及商用权利应单独核实；不能仅凭代码的 MIT 许可推断所有数据和权重均获授权。
+
+上游说明指出训练数据以亚洲年轻女性为主，其他人群覆盖不足。重构未消除该偏差，不应用作身份核验系统。

@@ -1,12 +1,26 @@
-from .face_detect import FaceDetect
-from .face_seg import FaceSeg
 import numpy as np
 
 
 class Preprocess:
-    def __init__(self, device='cpu', detector='dlib'):
+    def __init__(self, device='cpu', detector='dlib', seg_model_path=None):
+        # Delay inference-heavy imports until an instance is constructed.
+        from .face_detect import FaceDetect
+        from .face_seg import FaceSeg
+
         self.detect = FaceDetect(device, detector)  # device = 'cpu' or 'cuda', detector = 'dlib' or 'sfd'
-        self.segment = FaceSeg()
+        self.segment = FaceSeg() if seg_model_path is None else FaceSeg(seg_model_path)
+
+    def close(self):
+        """Release the segmentation model's TensorFlow session, if initialized."""
+        segment = getattr(self, 'segment', None)
+        if segment is not None:
+            segment.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
 
     def process(self, image):
         face_info = self.detect.align(image)

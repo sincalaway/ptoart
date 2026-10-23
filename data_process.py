@@ -1,30 +1,41 @@
-import os
-import cv2
-import numpy as np
-from tqdm import tqdm
+"""Prepare legacy training crops without executing work at import time."""
 import argparse
+from pathlib import Path
+import sys
 
-from utils import Preprocess
+import numpy as np
+
+from ptoart.io import SUPPORTED, read_image, write_image
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--data_path', type=str, help='photo folder path')
-parser.add_argument('--save_path', type=str, help='save folder path')
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="ptoart training image preprocessing")
+    parser.add_argument("--data_path", required=True, type=Path)
+    parser.add_argument("--save_path", required=True, type=Path)
+    parser.add_argument("--segmentation", type=Path,
+                        default=Path(__file__).resolve().parent / "utils/seg_model_384.pb")
+    args = parser.parse_args(argv)
+    source = args.data_path.resolve()
+    destination = args.save_path.resolve()
+    if not source.is_dir() or source == destination or source.is_relative_to(destination):
+        parser.error("Input must be a directory distinct from and outside the output directory")
+    files = sorted(p for p in source.iterdir() if p.is_file() and p.suffix.lower() in SUPPORTED)
+    from utils import Preprocess
+    failed = 0
+    with Preprocess(seg_model_path=str(args.segmentation)) as pre:
+        for index, path in enumerate(files):
+            try:
+                rgba = pre.process(read_image(path))
+                if rgba is None:
+                    raise ValueError("No face detected")
+                mask = rgba[:, :, 3:4].astype(np.float32) / 255
+                face = (rgba[:, :, :3] * mask + (1 - mask) * 255).astype(np.uint8)
+                write_image(destination / f"{index:04d}.png", face)
+            except Exception as exc:
+                failed += 1
+                print(f"{path}: {exc}", file=sys.stderr)
+    return 1 if failed else 0
 
-args = parser.parse_args()
-os.makedirs(args.save_path, exist_ok=True)
 
-pre = Preprocess()
-
-for idx, img_name in enumerate(tqdm(os.listdir(args.data_path))):
-    img = cv2.cvtColor(cv2.imread(os.path.join(args.data_path, img_name)), cv2.COLOR_BGR2RGB)
-    
-    # face alignment and segmentation
-    face_rgba = pre.process(img)
-    if face_rgba is not None:
-        # change background to white
-        face = face_rgba[:,:,:3].copy()
-        mask = face_rgba[:,:,3].copy()[:,:,np.newaxis]/255.
-        face_white_bg = (face*mask + (1-mask)*255).astype(np.uint8)
-
-        cv2.imwrite(os.path.join(args.save_path, str(idx).zfill(4)+'.png'), cv2.cvtColor(face_white_bg, cv2.COLOR_RGB2BGR))
+if __name__ == "__main__":
+    raise SystemExit(main())
