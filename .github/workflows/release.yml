@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to create (e.g. v0.2.0)'
+        required: true
+        default: 'v0.2.0'
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    uses: ./.github/workflows/windows-exe.yml
+  android:
+    uses: ./.github/workflows/android-apk.yml
+  publish:
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Combine checksums
+        run: |
+          cd dist
+          ls -la
+          cat SHA256SUMS*.txt > SHA256SUMS-all.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          name: ptoart ${{ github.event.inputs.tag || github.ref_name }}
+          prerelease: true
+          body_path: packaging/RELEASE_NOTES.md
+          files: |
+            dist/ptoart-windows-x64-cpu.zip
+            dist/ptoart-android.apk
+            dist/SHA256SUMS-all.txt
+          fail_on_unmatched_files: true

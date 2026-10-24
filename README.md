@@ -4,7 +4,7 @@
 
 [English](README_EN.md) · [Windows 便携版说明](packaging/WINDOWS-README.md) · [模型准备](docs/MODELS.md)
 
-> **当前为 0.1.0 工程预览版，不是开箱即用的完整模型包。** Windows 自动构建和打包自检已通过，但**官方模型权重不随包提供，真实照片的完整检测 → 分割 → 卡通出图尚未验证**。请先准备可信权重再尝试；构建成功、`doctor` 通过或随机权重自检成功，都不等于真实出图质量已验收。
+> **当前为 0.2.0 工程预览版，不是开箱即用的完整模型包。** Windows 自动构建和打包自检已通过，但**官方模型权重不随包提供，真实照片的完整检测 → 分割 → 卡通出图尚未验证**。请先准备可信权重再尝试；构建成功、`doctor` 通过或随机权重自检成功，都不等于真实出图质量已验收。
 
 ## 先了解能做什么
 
@@ -15,6 +15,15 @@
 | Windows 上不安装 Python，直接运行 | 下方「Windows 使用教程」 |
 | 从源码安装，或在 Linux/macOS 上尝试 | 「Python 源码安装」 |
 | 在自己的 Python 程序里调用 | 「Python API」 |
+| 安卓手机上点选照片生成头像 | 「安卓 App」 |
+
+## 安卓 App
+
+1. 在 [Releases](https://github.com/sincalaway/ptoart/releases) 下载 `ptoart-android.apk` 安装（Android 7.0+，需允许安装未知来源应用；APK 为调试签名）。
+2. 按[模型准备](docs/MODELS.md)取得 **`photo2cartoon_weights.onnx`** 保存到手机，在 App 中点「导入模型」选中它（模型不随 App 分发）。
+3. 点「选择人像照片」，可调卡通强度、透明背景，结果为 256×256 头像，可「保存到相册」（Pictures/ptoart）。也可以在相册里把照片“分享”到本 App。
+
+安卓版全程离线：人脸检测与人像分割使用打包进 APK 的 Google ML Kit 模型，卡通生成使用 ONNX Runtime。裁剪与对齐策略与桌面版近似但不完全一致，效果可能略有差异。
 
 ## Windows 使用教程
 
@@ -22,14 +31,11 @@
 
 ### 1. 下载并完整解压
 
-1. 打开 [Windows EXE 构建列表](https://github.com/sincalaway/ptoart/actions/workflows/windows-exe.yml)，选择默认分支 `refactor/ptoart-20261023` 上**已成功**的运行。
-2. 滚动到页面底部 **Artifacts**，下载 **`ptoart-windows-x64-cpu`**。网页下载通常需要登录 GitHub。
-3. 解压下载的 artifact ZIP，再解压其中的 **`ptoart-windows-x64-cpu.zip`**，直到看到包含 `ptoart.exe` 和 `_internal` 的 `ptoart` 文件夹。
-4. 将整个 `ptoart` 文件夹放在方便的位置，例如 `C:\ptoart`。**不要只复制 EXE，也不要在 ZIP 内直接运行。**
+1. 打开 [Releases 页面](https://github.com/sincalaway/ptoart/releases)，在最新版本的 Assets 里下载 **`ptoart-windows-x64-cpu.zip`**（无需登录，长期保留）。
+2. 解压得到包含 `ptoart.exe` 和 `_internal` 的 `ptoart` 文件夹，放在方便的位置，例如 `C:\ptoart`。**不要只复制 EXE，也不要在 ZIP 内直接运行。**
+3. 可用同一页面的 `SHA256SUMS-all.txt` 核对下载文件；包内 `BUILD.txt` 标明源码提交。EXE 未签名，请确认来自本仓库的 Release。
 
-已知成功构建：[运行 39937315949](https://github.com/sincalaway/ptoart/actions/runs/39937315949)（源码 `97a3d9f`）。这是固定历史入口，不代表后续最新版本；产物保留 30 天，过期后请选新的成功运行。
-
-包外的 `SHA256SUMS.txt` 可用于核对内层 ZIP；包内的 `BUILD.txt` 标明源码提交，`build-dependencies.txt` 记录构建依赖。EXE 未签名，请确认来自可信仓库及运行，不要关闭系统防护来运行来源不明的包。
+开发版构建仍可在 [Windows EXE 工作流](https://github.com/sincalaway/ptoart/actions/workflows/windows-exe.yml) 的 Artifacts 中下载（保留 30 天）。
 
 ### 2. 准备模型和照片
 
@@ -64,7 +70,7 @@ cd "C:\ptoart"
 
 `doctor` **只检查模块和文件存在**，不加载模型、不验证格式、CUDA 或图片效果。即使 `ready: true`，下一步实际加载仍可能失败。
 
-> 所有示例显式加 `--model-dir .\weights`。程序不会仅因为 EXE 旁存在 `weights` 就自动从那里找模型。相对路径基于当前 PowerShell 所在目录，含空格的路径请加双引号。
+> 从 0.2.0 起，EXE 会自动使用同目录下的 `weights` 文件夹（未指定 `--model-dir`/`--weights` 且未设置 `PTOART_MODEL_DIR` 时）。示例中保留 `--model-dir .\weights` 以便旧版本也能运行。相对路径基于当前 PowerShell 所在目录，含空格的路径请加双引号。
 
 ### 4. 转换第一张照片
 

@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">ptoart 人像卡通化</string>
+    <string name="import_model">导入模型 photo2cartoon_weights.onnx</string>
+    <string name="model_ready">模型已就绪（全部离线在手机上运行）</string>
+    <string name="model_missing">尚未导入模型：请先从上游项目下载 photo2cartoon_weights.onnx 并导入</string>
+    <string name="pick_photo">选择照片</string>
+    <string name="convert">转换为卡通头像</string>
+    <string name="save">保存 PNG</string>
+    <string name="transparent">透明背景</string>
+    <string name="strength_fmt">卡通强度：%1$d%%</string>
+    <string name="note">输出 256×256 人脸头像。人脸检测与人像分割使用 ML Kit，卡通生成器使用 ONNX Runtime；模型权重不随应用分发。建议使用清晰、正面、单人的照片。</string>
+</resources>

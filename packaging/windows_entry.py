@@ -1,6 +1,17 @@
 """Console entry for the Windows CPU distribution (no model downloads at build time)."""
 import multiprocessing
+import os
 import sys
+from pathlib import Path
+
+
+def default_weights_dir():
+    """Return the ``weights`` folder next to the frozen EXE (or None if absent)."""
+    base = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else None
+    if base is None:
+        return None
+    folder = base / "weights"
+    return folder if folder.is_dir() else None
 
 
 def frozen_self_test():
@@ -58,6 +69,14 @@ def run(argv=None):
     if args and args[0] in {"convert", "batch", "doctor"}:
         if not any(arg == "--detector" or arg.startswith("--detector=") for arg in args):
             args.extend(["--detector", "sfd"])
+        # Portable layout: use the "weights" folder beside ptoart.exe when the user
+        # gave no explicit model location and PTOART_MODEL_DIR is unset.
+        explicit = ("--model-dir", "--weights")
+        if (not any(a in explicit or a.startswith(tuple(e + "=" for e in explicit)) for a in args)
+                and not os.environ.get("PTOART_MODEL_DIR")):
+            portable = default_weights_dir()
+            if portable is not None:
+                args.extend(["--model-dir", str(portable)])
     from ptoart.cli import main
     return main(args)
 

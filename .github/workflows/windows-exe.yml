@@ -3,8 +3,8 @@ name: Windows EXE
 on:
   push:
     branches: ['refactor/ptoart-20261023']
-    tags: ['v*']
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
