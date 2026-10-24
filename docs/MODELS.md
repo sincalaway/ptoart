@@ -4,6 +4,10 @@ ptoart 不包含、不自动下载，也不重新分发上游模型权重。不�
 
 ## 到哪里取得
 
+**推荐（国内直连）：[光鸭云盘 · ptoart 模型](https://www.guangyapan.com/s/1961237335383875651_alCCcsK8loJ3qRN9)**，由仓库维护者分享。下载后按下表放置文件；建议用 `sha256sum`/`Get-FileHash` 自行留档校验。
+
+其他来源：
+
 [上游项目说明](https://github.com/minivision-ai/photo2cartoon#start)提供了以下资源入口。这些链接来自上游，不代表本次已成功下载或验证文件：
 
 [Google Drive 资源包](https://drive.google.com/open?id=1lsQS8hOCquMFKJFhK_z-n03ixWGkjT2P)；[百度网盘资源包](https://pan.baidu.com/s/1MsT3-He3UGipKhUi4OcCJw)，提取码 `y2ch`；[ONNX 单文件](https://drive.google.com/file/d/1PhwKDUhiq8p-UqrfHCqj257QnqBWD523/view)。

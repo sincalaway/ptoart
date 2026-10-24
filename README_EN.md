@@ -2,9 +2,9 @@
 
 A maintainable refactor of [photo2cartoon](https://github.com/minivision-ai/photo2cartoon), preserving its generator and training algorithms while adding a shared Torch/ONNX pipeline, batch processing, structured errors, background/alpha output, intensity blending and diagnostics.
 
-[Complete Chinese tutorial](README.md) · [Windows package guide (Chinese)](packaging/WINDOWS-README.md) · [Model setup](docs/MODELS.md)
+[Complete Chinese tutorial](README.md) · [Windows package guide (Chinese)](packaging/WINDOWS-README.md) · [Model setup](docs/MODELS.md) · [Model download (Guangya Pan)](https://www.guangyapan.com/s/1961237335383875651_alCCcsK8loJ3qRN9)
 
-> **Version 0.1.0 is an engineering preview. Official weights are not bundled.** Windows packaging and frozen-runtime smoke tests passed, but full real-photo inference with official weights has not been validated. A successful build, `doctor` result or random-weight test is not evidence of visual quality.
+> **Version 0.2.0 is an engineering preview. Official weights are not bundled.** Windows packaging and frozen-runtime smoke tests passed, but full real-photo inference with official weights has not been validated. A successful build, `doctor` result or random-weight test is not evidence of visual quality.
 
 ## Windows portable quick start
 
@@ -13,7 +13,7 @@ For Windows 10/11 x64, CPU only; no Python installation required. This is a **co
 1. Open [Windows EXE workflow runs](https://github.com/sincalaway/ptoart/actions/workflows/windows-exe.yml) and select a successful run on `refactor/ptoart-20261023`.
 2. Download **ptoart-windows-x64-cpu** under **Artifacts** (web downloads typically require GitHub sign-in). Extract the downloaded ZIP, then extract the inner `ptoart-windows-x64-cpu.zip`.
 3. Keep the entire `ptoart` folder, including `ptoart.exe` and `_internal`. Do not run from inside the ZIP or copy only the executable.
-4. Obtain trusted weights via [model setup](docs/MODELS.md). Put `photo2cartoon_weights.pt` and `seg_model_384.pb` in a `weights` folder beside the EXE; the bundled `weights/README.txt` is not a model.
+4. Download the weights from the [Guangya Pan share](https://www.guangyapan.com/s/1961237335383875651_alCCcsK8loJ3qRN9) (other sources: [model setup](docs/MODELS.md)). Put `photo2cartoon_weights.pt` and `seg_model_384.pb` in a `weights` folder beside the EXE; the bundled `weights/README.txt` is not a model.
 5. Put your photo at `portrait.jpg`, open PowerShell and change to the EXE folder (replace the example location):
 
 ```powershell
