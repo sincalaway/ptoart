@@ -13,7 +13,7 @@ For Windows 10/11 x64, CPU only; no Python installation required. This is a **co
 1. Open [Windows EXE workflow runs](https://github.com/sincalaway/ptoart/actions/workflows/windows-exe.yml) and select a successful run on `refactor/ptoart-20261023`.
 2. Download **ptoart-windows-x64-cpu** under **Artifacts** (web downloads typically require GitHub sign-in). Extract the downloaded ZIP, then extract the inner `ptoart-windows-x64-cpu.zip`.
 3. Keep the entire `ptoart` folder, including `ptoart.exe` and `_internal`. Do not run from inside the ZIP or copy only the executable.
-4. Download the weights from the [Guangya Pan share](https://www.guangyapan.com/s/1961237335383875651_alCCcsK8loJ3qRN9) (other sources: [model setup](docs/MODELS.md)). Put `photo2cartoon_weights.pt` and `seg_model_384.pb` in a `weights` folder beside the EXE; the bundled `weights/README.txt` is not a model.
+4. Download the weights from the [Guangya Pan share](https://www.guangyapan.com/s/1961237335383875651_alCCcsK8loJ3qRN9) (other sources: [model setup](docs/MODELS.md)). The share has no ONNX file; create one with `python tools/export_onnx.py photo2cartoon_weights.pt`. Put `photo2cartoon_weights.pt` and `seg_model_384.pb` in a `weights` folder beside the EXE; the bundled `weights/README.txt` is not a model.
 5. Put your photo at `portrait.jpg`, open PowerShell and change to the EXE folder (replace the example location):
 
 ```powershell

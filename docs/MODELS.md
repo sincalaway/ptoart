@@ -4,7 +4,7 @@ ptoart 不包含、不自动下载，也不重新分发上游模型权重。不�
 
 ## 到哪里取得
 
-**推荐（国内直连）：[光鸭云盘 · ptoart 模型](https://www.guangyapan.com/s/1961237335383875651_alCCcsK8loJ3qRN9)**，由仓库维护者分享。下载后按下表放置文件；建议用 `sha256sum`/`Get-FileHash` 自行留档校验。
+**推荐（国内直连）：[光鸭云盘 · ptoart 模型](https://www.guangyapan.com/s/1961237335383875651_alCCcsK8loJ3qRN9)**，由仓库维护者分享，包含 `photo2cartoon_weights.pt`、`seg_model_384.pb`、`model_mobilefacenet.pth`（不含 ONNX）。下载后按下表放置文件；建议用 `sha256sum`/`Get-FileHash` 自行留档校验。
 
 其他来源：
 
@@ -22,6 +22,15 @@ ptoart 不包含、不自动下载，也不重新分发上游模型权重。不�
 旧 `test.py` / `test_onnx.py` 仍从仓库的 `models/` 读生成器、`utils/` 读分割模型。新 CLI 可用 `--weights`、`--segmentation` 显式指向这些文件。
 
 完整的人脸预处理还会依赖 face-alignment 的检测/关键点资产，其首次运行可能触发第三方下载。离线部署前，应准备并验证这些资产和依赖缓存，不能仅复制上述三个文件就保证离线可用。
+
+## 生成 ONNX（安卓 App 与 `--backend onnx` 需要）
+
+```bash
+pip install "torch>=2.5" onnx onnxscript onnxruntime
+python tools/export_onnx.py photo2cartoon_weights.pt photo2cartoon_weights.onnx
+```
+
+脚本只导出 `genA2B` 生成器（输入 `input`、输出 `output`，均为 `[1,3,256,256]`），并用 ONNX Runtime 与 Torch 结果做数值比对后打印误差。
 
 ## 安全与完整性
 

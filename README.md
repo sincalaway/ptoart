@@ -20,7 +20,7 @@
 ## 安卓 App
 
 1. 在 [Releases](https://github.com/sincalaway/ptoart/releases) 下载 `ptoart-android.apk` 安装（Android 7.0+，需允许安装未知来源应用；APK 为调试签名）。
-2. 从[光鸭云盘模型分享](https://www.guangyapan.com/s/1961237335383875651_alCCcsK8loJ3qRN9)下载 **`photo2cartoon_weights.onnx`** 保存到手机，在 App 中点「导入模型」选中它（模型不随 App 分发）。
+2. 准备 **`photo2cartoon_weights.onnx`**：光鸭云盘分享里是 Torch 版 `photo2cartoon_weights.pt`，在电脑上运行 `python tools/export_onnx.py photo2cartoon_weights.pt` 即可转换（需 `pip install "torch>=2.5" onnx onnxscript onnxruntime`），也可用[上游 ONNX 单文件](https://drive.google.com/file/d/1PhwKDUhiq8p-UqrfHCqj257QnqBWD523/view)。把它保存到手机，在 App 中点「导入模型」选中它（模型不随 App 分发）。
 3. 点「选择人像照片」，可调卡通强度、透明背景，结果为 256×256 头像，可「保存到相册」（Pictures/ptoart）。也可以在相册里把照片“分享”到本 App。
 
 安卓版全程离线：人脸检测与人像分割使用打包进 APK 的 Google ML Kit 模型，卡通生成使用 ONNX Runtime。裁剪与对齐策略与桌面版近似但不完全一致，效果可能略有差异。
