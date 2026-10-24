@@ -9,7 +9,7 @@
 
 ## 重要说明
 
-- **模型权重不随包分发**，请从 [光鸭云盘](https://www.guangyapan.com/s/1961237335383875651_alCCcsK8loJ3qRN9) 下载，其他来源见 [docs/MODELS.md](https://github.com/sincalaway/ptoart/blob/refactor/ptoart-20261023/docs/MODELS.md)。
+- **模型权重不随包分发**，请从 [光鸭云盘](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9) 下载，其他来源见 [docs/MODELS.md](https://github.com/sincalaway/ptoart/blob/refactor/ptoart-20261023/docs/MODELS.md)。
 - Windows 版需要 `photo2cartoon_weights.pt` + `seg_model_384.pb`；安卓版只需 `photo2cartoon_weights.onnx`（人脸检测与人像分割使用内置 ML Kit 模型）。
 - 安卓 APK 使用调试签名，安装时需允许“未知来源”；EXE 未签名。
 - 这是预览版：自动构建与自检已通过，真实照片 + 官方权重的出图效果未做完整验收。

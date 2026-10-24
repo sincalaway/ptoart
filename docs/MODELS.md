@@ -4,7 +4,7 @@ ptoart 不包含、不自动下载，也不重新分发上游模型权重。不�
 
 ## 到哪里取得
 
-**推荐（国内直连）：[光鸭云盘 · ptoart 模型](https://www.guangyapan.com/s/1961237335383875651_alCCcsK8loJ3qRN9)**，由仓库维护者分享，包含 `photo2cartoon_weights.pt`、`seg_model_384.pb`、`model_mobilefacenet.pth`（不含 ONNX）。下载后按下表放置文件；建议用 `sha256sum`/`Get-FileHash` 自行留档校验。
+**推荐（国内直连）：[光鸭云盘 · ptoart 模型](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)**，由仓库维护者分享，包含 Windows/桌面版所需的 `photo2cartoon_weights.pt`、`seg_model_384.pb`，安卓 App 所需的 `photo2cartoon_weights.onnx`，以及仅训练用的 `model_mobilefacenet.pth`。下载后按下表放置文件；建议用 `sha256sum`/`Get-FileHash` 自行留档校验。
 
 其他来源：
 
@@ -23,7 +23,7 @@ ptoart 不包含、不自动下载，也不重新分发上游模型权重。不�
 
 完整的人脸预处理还会依赖 face-alignment 的检测/关键点资产，其首次运行可能触发第三方下载。离线部署前，应准备并验证这些资产和依赖缓存，不能仅复制上述三个文件就保证离线可用。
 
-## 生成 ONNX（安卓 App 与 `--backend onnx` 需要）
+## 自行生成 ONNX（可选）
 
 ```bash
 pip install "torch>=2.5" onnx onnxscript onnxruntime

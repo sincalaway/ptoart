@@ -2,7 +2,7 @@
 
 将人像照片转换为卡通头像的命令行工具，基于 [minivision-ai/photo2cartoon](https://github.com/minivision-ai/photo2cartoon) 重构。支持 Windows 便携 EXE、Python CLI 和 Python API，以及单图、批量、透明背景和强度混合。
 
-[English](README_EN.md) · [Windows 便携版说明](packaging/WINDOWS-README.md) · [模型准备](docs/MODELS.md) · [模型下载（光鸭云盘）](https://www.guangyapan.com/s/1961237335383875651_alCCcsK8loJ3qRN9)
+[English](README_EN.md) · [Windows 便携版说明](packaging/WINDOWS-README.md) · [模型准备](docs/MODELS.md) · [模型下载（光鸭云盘）](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)
 
 > **当前为 0.2.0 工程预览版，不是开箱即用的完整模型包。** Windows 自动构建和打包自检已通过，但**官方模型权重不随包提供，真实照片的完整检测 → 分割 → 卡通出图尚未验证**。请先准备可信权重再尝试；构建成功、`doctor` 通过或随机权重自检成功，都不等于真实出图质量已验收。
 
@@ -20,7 +20,7 @@
 ## 安卓 App
 
 1. 在 [Releases](https://github.com/sincalaway/ptoart/releases) 下载 `ptoart-android.apk` 安装（Android 7.0+，需允许安装未知来源应用；APK 为调试签名）。
-2. 准备 **`photo2cartoon_weights.onnx`**：光鸭云盘分享里是 Torch 版 `photo2cartoon_weights.pt`，在电脑上运行 `python tools/export_onnx.py photo2cartoon_weights.pt` 即可转换（需 `pip install "torch>=2.5" onnx onnxscript onnxruntime`），也可用[上游 ONNX 单文件](https://drive.google.com/file/d/1PhwKDUhiq8p-UqrfHCqj257QnqBWD523/view)。把它保存到手机，在 App 中点「导入模型」选中它（模型不随 App 分发）。
+2. 从[光鸭云盘模型分享](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)下载 **`photo2cartoon_weights.onnx`**（也可用 `python tools/export_onnx.py photo2cartoon_weights.pt` 自行由 Torch 权重转换），把它保存到手机，在 App 中点「导入模型」选中它（模型不随 App 分发）。
 3. 点「选择人像照片」，可调卡通强度、透明背景，结果为 256×256 头像，可「保存到相册」（Pictures/ptoart）。也可以在相册里把照片“分享”到本 App。
 
 安卓版全程离线：人脸检测与人像分割使用打包进 APK 的 Google ML Kit 模型，卡通生成使用 ONNX Runtime。裁剪与对齐策略与桌面版近似但不完全一致，效果可能略有差异。
@@ -39,7 +39,7 @@
 
 ### 2. 准备模型和照片
 
-从[光鸭云盘模型分享](https://www.guangyapan.com/s/1961237335383875651_alCCcsK8loJ3qRN9)下载模型（其他来源见[模型准备说明](docs/MODELS.md)）。普通照片使用默认 Torch 后端时，需要以下两个真实模型文件，放入 EXE 旁的 `weights` 文件夹：
+从[光鸭云盘模型分享](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)下载模型（其他来源见[模型准备说明](docs/MODELS.md)）。普通照片使用默认 Torch 后端时，需要以下两个真实模型文件，放入 EXE 旁的 `weights` 文件夹：
 
 ```text
 C:\ptoart\

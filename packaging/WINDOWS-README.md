@@ -16,7 +16,7 @@
 
 ## 2. 准备权重和照片
 
-权重不在包内，也不会在构建时下载。按[模型准备说明](https://github.com/sincalaway/ptoart/blob/refactor/ptoart-20261023/docs/MODELS.md)取得可信模型，推荐从[光鸭云盘模型分享](https://www.guangyapan.com/s/1961237335383875651_alCCcsK8loJ3qRN9)下载。包内也附有 `MODELS.md`。
+权重不在包内，也不会在构建时下载。按[模型准备说明](https://github.com/sincalaway/ptoart/blob/refactor/ptoart-20261023/docs/MODELS.md)取得可信模型，推荐从[光鸭云盘模型分享](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)下载。包内也附有 `MODELS.md`。
 
 默认 Torch 后端处理普通照片时，将这两个模型放入 `weights`，再准备自己的测试照片：
 
