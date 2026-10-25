@@ -4,7 +4,7 @@
 
 **第一次用？看 [小白使用教程](docs/QUICKSTART.md)** · [English](README_EN.md) · [Windows 便携版说明](packaging/WINDOWS-README.md) · [模型准备](docs/MODELS.md) · [模型下载（Release）](https://github.com/sincalaway/ptoart/releases/latest)
 
-> **当前为 0.2.0 工程预览版，不是开箱即用的完整模型包。** Windows 自动构建和打包自检已通过，但**官方模型权重不随包提供，真实照片的完整检测 → 分割 → 卡通出图尚未验证**。请先准备可信权重再尝试；构建成功、`doctor` 通过或随机权重自检成功，都不等于真实出图质量已验收。
+> 当前版本 0.3.2。Windows 双击即开图形界面，安卓 App 导入模型即可用；所有模型都在 [Release](https://github.com/sincalaway/ptoart/releases/latest) 中下载。
 
 ## 先了解能做什么
 
@@ -68,7 +68,7 @@ C:\ptoart\
 
 ## Windows 使用教程
 
-适用 Windows 10/11 x64，仅 CPU，无需另装 Python。**双击 `ptoart.exe` 打开图形界面**（选照片、选效果、预览、保存，支持批量），下面的命令行用法供进阶使用。不含 CUDA 或 dlib。
+适用 Windows 10/11 x64，仅 CPU，无需另装 Python。**双击 `ptoart.exe` 打开图形界面**，选照片、选效果、预览、保存、批量处理都用鼠标完成，不需要命令行。不含 CUDA 或 dlib。
 
 ### 1. 下载并完整解压
 
@@ -96,7 +96,24 @@ C:\ptoart\
 
 **首次处理普通照片请保持联网。** Windows 包默认使用 SFD 检测器；face-alignment 仍可能下载人脸检测/关键点资产到用户缓存。仅放入上面两个文件不能保证离线首启，自动下载链路尚未完成实际验收。
 
-### 3. 在 PowerShell 检查程序
+### 3. 双击 `ptoart.exe`，全程鼠标操作
+
+不需要打开命令行：
+
+1. 双击 `ptoart.exe`，打开图形界面（首次启动约 10–30 秒）。左下角显示模型状态，✓ 表示已就绪；缺模型时点「打开模型文件夹」放入文件，再点「重新检测模型」。
+2. 点「＋ 选择照片」，可一次多选。
+3. 选效果：「卡通头像」「整张照片」（所有人脸卡通化贴回原图）或「动漫风格」（再选宫崎骏、新海诚等）。
+4. 按需调整：头像尺寸 512 / 1024 / 2048、卡通强度、透明背景、超分辨率增强。
+5. 点「开始转换 →」，右侧对比原图和效果，点「保存结果」。多张照片会自动保存到照片旁的 `ptoart输出` 文件夹。
+
+首次处理人脸请保持联网，程序会自动下载一次人脸检测数据（之后可离线）。Windows 提示“已保护你的电脑”时，点「更多信息 → 仍要运行」（程序未签名）。
+
+懒得开窗口也可以：把照片拖到包里的 `1-avatar.bat`（卡通头像）、`2-whole-photo.bat`（整张照片）或 `3-style-hayao.bat`（宫崎骏风格）上，结果在 `output` 文件夹。
+
+<details>
+<summary><b>进阶：命令行用法（可选，普通用户不需要）</b></summary>
+
+#### 3. 在 PowerShell 检查程序
 
 打开 PowerShell，进入**实际存放 EXE 的目录**。以下用 `C:\ptoart` 为例，若位置不同请替换：
 
@@ -113,7 +130,7 @@ cd "C:\ptoart"
 
 > 从 0.2.0 起，EXE 会自动使用同目录下的 `weights` 文件夹（未指定 `--model-dir`/`--weights` 且未设置 `PTOART_MODEL_DIR` 时）。示例中保留 `--model-dir .\weights` 以便旧版本也能运行。相对路径基于当前 PowerShell 所在目录，含空格的路径请加双引号。
 
-### 4. 转换第一张照片
+#### 4. 转换第一张照片
 
 把自己的照片保存为 `portrait.jpg`，然后运行：
 
@@ -138,7 +155,7 @@ cd "C:\ptoart"
 
 `--strength` 范围为 0–1，默认 1；它只是像素混合，不是模型风格控制。默认白色背景，透明度来自分割掩码，发丝边缘质量仍取决于分割模型。输入与输出不得是同一路径，即使加 `--overwrite` 也不能覆盖原照片。
 
-### 4b. 整张照片、高清头像与整图风格
+#### 4b. 整张照片、高清头像与整图风格
 
 ```powershell
 # 1024×1024 高清头像
@@ -157,7 +174,7 @@ cd "C:\ptoart"
 .\ptoart.exe convert .\portrait.jpg .\output\avatar-hd.png --size 1024 --upscale anime --model-dir .\weights --device cpu
 ```
 
-### 5. 批量处理文件夹
+#### 5. 批量处理文件夹
 
 把照片放进 `photos` 文件夹。下面命令会包含子目录，并生成逐图 JSON 报告：
 
@@ -169,7 +186,7 @@ cd "C:\ptoart"
 
 已有结果默认记为该图失败。重复执行时，可换输出目录，或明确加 `--overwrite` 覆盖图片；**报告文件永不覆盖**，即使有 `--overwrite` 也要换成新的名称（例如 `batch-report-2.json`）。输出目录不得等于或包含输入目录；位于输入目录内部的输出目录会被排除。
 
-### 6. 可选：ONNX 或已对齐头像
+#### 6. 可选：ONNX 或已对齐头像
 
 Windows 包也包含 ONNX Runtime。准备 `ptoart_weights.onnx` 后，用同一后端检查和转换；普通照片仍需要分割模型及人脸预处理，不是纯 ONNX 依赖链：
 
@@ -187,7 +204,7 @@ Windows 包也包含 ONNX Runtime。准备 `ptoart_weights.onnx` 后，用同一
 
 此模式仍需要生成器权重，但跳过人脸检测和分割，不需要 `seg_model_384.pb`。它把整张输入视为不透明，**不会自动抠图**；不要为绕过普通照片的错误而随意加此参数，也不要把「正方形」误当成「已对齐」。
 
-### 常见问题与退出码
+#### 常见问题与退出码
 
 | 现象 | 处理方法 |
 | --- | --- |
@@ -204,6 +221,9 @@ Windows 包也包含 ONNX Runtime。准备 `ptoart_weights.onnx` 后，用同一
 | 图片过大 / 格式不支持 | 支持 JPG、JPEG、PNG、WebP、BMP、TIF/TIFF；默认上限 2500 万像素，可先缩图或谨慎调整 `--max-pixels` |
 
 退出码 **0**：命令成功（`doctor` 表示存在性检查通过）；**1**：批次中有图片失败；**2**：参数、模型/依赖初始化、空输入等命令级错误，或 `doctor` 未就绪。批处理请同时查看报告中的 `total`、`succeeded`、`failed` 和逐图错误。
+
+
+</details>
 
 ## Python 源码安装
 

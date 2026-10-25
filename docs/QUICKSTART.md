@@ -75,12 +75,7 @@
 5. 第一次处理人脸时请**保持联网**：程序会自动下载人脸检测数据（约几十 MB，只下一次）。之后可离线使用。
 6. Windows 提示“已保护你的电脑”时，点 **更多信息 → 仍要运行**（程序未做数字签名）。
 
-想用其他风格（新海诚等）或调参数，见 [README](../README.md) 的命令行说明，例如：
-
-```powershell
-cd C:\ptoart\ptoart
-.\ptoart.exe convert .\me.jpg .\output\me-shinkai.jpg --style shinkai --model-dir .\weights
-```
+所有功能（风格、尺寸、强度、透明背景、超分、批量）都在窗口里点选，不需要命令行。
 
 ---
 

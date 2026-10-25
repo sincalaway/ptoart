@@ -4,28 +4,17 @@ A maintainable refactor of [photo2cartoon](https://github.com/minivision-ai/phot
 
 [Complete Chinese tutorial](README.md) · [Windows package guide (Chinese)](packaging/WINDOWS-README.md) · [Model setup](docs/MODELS.md) · [Model downloads (Release)](https://github.com/sincalaway/ptoart/releases/latest)
 
-> **Version 0.2.0 is an engineering preview. Official weights are not bundled.** Windows packaging and frozen-runtime smoke tests passed, but full real-photo inference with official weights has not been validated. A successful build, `doctor` result or random-weight test is not evidence of visual quality.
+> Version 0.3.2. All models are downloadable from the [Release](https://github.com/sincalaway/ptoart/releases/latest); the Windows EXE opens a GUI and the Android app works after importing models.
 
 ## Windows portable quick start
 
-For Windows 10/11 x64, CPU only; no Python installation required. This is a **console application, not a GUI**. CUDA and dlib are not included.
+For Windows 10/11 x64, CPU only; no Python and no command line needed. **Double-click `ptoart.exe` to open the GUI.**
 
-1. Open [Windows EXE workflow runs](https://github.com/sincalaway/ptoart/actions/workflows/windows-exe.yml) and select a successful run on `refactor/ptoart-20261023`.
-2. Download **ptoart-windows-x64-cpu** under **Artifacts** (web downloads typically require GitHub sign-in). Extract the downloaded ZIP, then extract the inner `ptoart-windows-x64-cpu.zip`.
-3. Keep the entire `ptoart` folder, including `ptoart.exe` and `_internal`. Do not run from inside the ZIP or copy only the executable.
-4. Download the models from the same [Release](https://github.com/sincalaway/ptoart/releases/latest): `ptoart_weights.pt` and `seg_model_384.pb` go in a `weights` folder beside the EXE (required for avatar/photo modes). Optional: `ptoart_weights.onnx` (Android app, or `--backend onnx`), `ptoart-styles-animeganv2.zip` → `weights\styles\`, `ptoart-upscalers-realesrgan.zip` → `weights\upscale\`. The bundled `weights/README.txt` is not a model. Licences: cartoon generator MIT (from minivision-ai/photo2cartoon), Real-ESRGAN BSD-3, AnimeGANv2 non-commercial only.
-5. Put your photo at `portrait.jpg`, open PowerShell and change to the EXE folder (replace the example location):
+1. From the [latest Release](https://github.com/sincalaway/ptoart/releases/latest) download `ptoart-windows-x64-cpu.zip` and extract it (keep `ptoart.exe` together with `_internal`).
+2. From the same Release download `ptoart_weights.pt` and `seg_model_384.pb` into the `weights` folder beside the EXE. Optional: unzip `ptoart-styles-animeganv2.zip` into `weights\styles\` and `ptoart-upscalers-realesrgan.zip` into `weights\upscale\`. Licences: cartoon generator MIT (from minivision-ai/photo2cartoon), Real-ESRGAN BSD-3, AnimeGANv2 non-commercial only.
+3. Double-click `ptoart.exe`, pick photos (multi-select works), choose Avatar / Whole photo / Anime style, adjust size, strength, transparency and super-resolution, then Convert and Save. Batches are saved to a `ptoart输出` folder next to the photos.
 
-```powershell
-cd "C:\ptoart"
-.\ptoart.exe --version
-.\ptoart.exe --help
-.\ptoart.exe doctor --model-dir .\weights --device cpu
-.\ptoart.exe convert .\portrait.jpg .\output\avatar.png --model-dir .\weights --device cpu
-.\ptoart.exe batch .\photos .\output-batch --recursive --model-dir .\weights --device cpu --report .\batch-report.json
-```
-
-Always specify `--model-dir .\weights` for this layout; the folder is not automatically selected just because it is beside the EXE. Relative paths use the current working directory. Quote paths containing spaces.
+Command-line use is still available for advanced users (`ptoart.exe --help`); see the Chinese README.
 
 The Windows package defaults to **SFD**, unlike the source CLI's dlib default. Face-alignment may still download detector/landmark assets on first use: keep the first real-photo run online. Offline first launch and these downloads have not been validated.
 

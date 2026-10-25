@@ -108,12 +108,12 @@ jobs:
         shell: pwsh
         run: |
           @'
-          ## Windows x64 CPU portable console package
+          ## Windows x64 CPU portable package (GUI)
           Download **ptoart-windows-x64-cpu** under this run's Artifacts and extract both ZIP layers.
           Keep `ptoart.exe` together with the `_internal` folder; no Python installation is required.
           No official model weights are bundled. SFD is the default detector; dlib and CUDA are not included.
           Frozen random-weight inference and synthetic segmentation passed; real-photo official-weight end-to-end inference is not validated.
-          See README-WINDOWS.md in the package for commands.
+          Double-click ptoart.exe to open the GUI; see README-WINDOWS.md in the package.
           '@ >> $env:GITHUB_STEP_SUMMARY
 
   screenshot:
