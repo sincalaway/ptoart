@@ -2,7 +2,7 @@
 
 | 平台 | 文件 | 说明 |
 | --- | --- | --- |
-| Windows 10/11 x64 | `ptoart-windows-x64-cpu.zip` | 便携版，仅 CPU。**双击 `ptoart.exe` 打开图形界面**；也可命令行或拖拽 `.bat` 使用。把模型放进 EXE 旁的 `weights` 文件夹即可自动识别 |
+| Windows 10/11 x64 | `ptoart-windows-x64.zip` | 便携版，仅 CPU。**双击 `ptoart.exe` 打开图形界面**；也可命令行或拖拽 `.bat` 使用。把模型放进 EXE 旁的 `weights` 文件夹即可自动识别 |
 | Android 7.0+ | `ptoart-android.apk` | 图形界面 App：卡通头像、整张照片人脸卡通化、整图风格三种模式，离线运行 |
 | 头像生成器 | `ptoart_weights.pt` | Windows 默认后端（MIT） |
 | 人像分割 | `seg_model_384.pb` | Windows 头像/整张照片模式必需 |

@@ -298,3 +298,19 @@ def test_cli_doctor_checks_presence_without_loading_ml_frameworks(tmp_path):
     assert report["models"] == {str((tmp_path / "ptoart_weights.pt").resolve()): False}
     assert "Presence checks only" in report["note"]
     assert "unexpected ML import" not in result.stderr
+
+
+def test_face_style_uses_face_painter_at_512_on_raw_crop(monkeypatch, tmp_path):
+    import ptoart.pipeline as pl
+
+    painter = RecordingBackend()
+    monkeypatch.setattr(pl, "StyleBackend", lambda path: painter)
+    rgba = rgba_fixture(300, alpha=0)
+    config = ArtConfig(model_dir=tmp_path, style="face_paint_512_v2", size=512, background=None)
+    pipeline = ArtPipeline(config, preprocessor=RecordingPreprocessor(rgba))
+    out = pipeline.convert(np.zeros((400, 400, 3), dtype=np.uint8))
+    assert painter.input.shape == (1, 3, 512, 512)
+    assert pipeline.backend is None  # generator weights are not needed
+    assert out.shape == (512, 512, 4)
+    # Raw crop pixels reach the painter (no white compositing under a zero mask).
+    assert painter.input.min() < 0.9

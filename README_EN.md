@@ -4,13 +4,13 @@ A maintainable refactor of [photo2cartoon](https://github.com/minivision-ai/phot
 
 [Complete Chinese tutorial](README.md) · [Windows package guide (Chinese)](packaging/WINDOWS-README.md) · [Model setup](docs/MODELS.md) · [Model downloads (Release)](https://github.com/sincalaway/ptoart/releases/latest)
 
-> Version 0.3.4. All models are downloadable from the [Release](https://github.com/sincalaway/ptoart/releases/latest); the Windows EXE opens a GUI and the Android app works after importing models.
+> Version 0.3.5. All models are downloadable from the [Release](https://github.com/sincalaway/ptoart/releases/latest); the Windows EXE opens a GUI and the Android app works after importing models.
 
 ## Windows portable quick start
 
 For Windows 10/11 x64, CPU only; no Python and no command line needed. **Double-click `ptoart.exe` to open the GUI.**
 
-1. From the [latest Release](https://github.com/sincalaway/ptoart/releases/latest) download `ptoart-windows-x64-cpu.zip` and extract it (keep `ptoart.exe` together with `_internal`).
+1. From the [latest Release](https://github.com/sincalaway/ptoart/releases/latest) download `ptoart-windows-x64.zip` and extract it (keep `ptoart.exe` together with `_internal`).
 2. From the same Release download `ptoart_weights.pt` and `seg_model_384.pb` into the `weights` folder beside the EXE. Optional: unzip `ptoart-styles-animeganv2.zip` into `weights\styles\` and `ptoart-upscalers-realesrgan.zip` into `weights\upscale\`. Licences: cartoon generator MIT (from minivision-ai/photo2cartoon), Real-ESRGAN BSD-3, AnimeGANv2 non-commercial only.
 3. Double-click `ptoart.exe`, pick photos (multi-select works), choose Avatar / Whole photo / Anime style, adjust size, strength, transparency and super-resolution, then Convert and Save. Batches are saved to a `ptoart输出` folder next to the photos.
 

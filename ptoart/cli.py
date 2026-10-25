@@ -39,7 +39,9 @@ def add_options(parser):
                              "pasted back; style: whole-image AnimeGANv2 style (default: face, "
                              "or style when --style is given)")
     parser.add_argument("--style", help="Style name in <model-dir>/styles (hayao, shinkai, paprika, "
-                                        "celeba_distill, face_paint_512_v1, face_paint_512_v2) or a .onnx path")
+                                        "celeba_distill, face_paint_512_v1, face_paint_512_v2) or a .onnx path. "
+                                        "With --output face/photo it paints the faces instead of the "
+                                        "default generator (face_paint_512_v2 recommended)")
     parser.add_argument("--upscale", help="Super-resolution model in <model-dir>/upscale (anime, general) "
                                           "or a .onnx path; used when output is larger than the model's")
     parser.add_argument("--style-max-side", type=int, default=1536,

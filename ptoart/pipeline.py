@@ -23,13 +23,17 @@ class ArtPipeline:
         self.preprocessor = preprocessor
         self.upscaler = upscaler
         self.closed = False
+        self.face_painter = None
         try:
             if self.upscaler is None and self.config.upscale is not None:
                 self.upscaler = UpscaleBackend(self.config.upscale)
             if self.config.output == "style":
                 self.backend = backend if backend is not None else StyleBackend(self.config.style)
                 return
-            if backend is None:
+            if self.config.style is not None:
+                # Face/photo modes with a style: AnimeGANv2 face painter replaces the generator.
+                self.face_painter = StyleBackend(self.config.style)
+            elif backend is None:
                 require_file(self.config.weights)
             if not self.config.aligned and self.preprocessor is None:
                 require_file(self.config.segmentation)
@@ -43,7 +47,8 @@ class ArtPipeline:
                     )
                 except ImportError as exc:
                     raise ModelError("Face preprocessing requires: pip install 'ptoart[face]'") from exc
-            self.backend = backend if backend is not None else create_backend(self.config)
+            if self.face_painter is None:
+                self.backend = backend if backend is not None else create_backend(self.config)
         except Exception as exc:
             try:
                 self.close()
@@ -91,7 +96,9 @@ class ArtPipeline:
         return rgba
 
     def _infer(self, rgba):
-        """Run the generator on a face crop; returns float32 HWC cartoon at 256x256."""
+        """Run the generator on a face crop; returns float32 HWC cartoon (256px, or 512px painter)."""
+        if self.face_painter is not None:
+            return self._paint_face(rgba)
         rgba = cv2.resize(rgba, (256, 256), interpolation=cv2.INTER_AREA)
         source = rgba[:, :, :3].astype(np.float32)
         mask = rgba[:, :, 3:4].astype(np.float32) / 255.0
@@ -104,6 +111,19 @@ class ArtPipeline:
             raise
         except Exception as exc:
             raise ModelError(f"Inference failed: {exc}") from exc
+        return (output[0].transpose(1, 2, 0) + 1) * 127.5
+
+    def _paint_face(self, rgba, side=512):
+        """AnimeGANv2 face painter on the raw crop (keeps proportions; no white compositing)."""
+        interpolation = cv2.INTER_AREA if rgba.shape[0] >= side else cv2.INTER_CUBIC
+        rgb = cv2.resize(rgba[:, :, :3], (side, side), interpolation=interpolation)
+        tensor = np.ascontiguousarray((rgb.astype(np.float32) / 127.5 - 1).transpose(2, 0, 1)[None])
+        try:
+            output = np.asarray(self.face_painter.run(tensor))
+        except Exception as exc:
+            raise ModelError(f"Inference failed: {exc}") from exc
+        if output.shape != tensor.shape or not np.isfinite(output).all():
+            raise ModelError(f"Invalid face painter output; expected {tensor.shape}, got {output.shape}")
         return (output[0].transpose(1, 2, 0) + 1) * 127.5
 
     def _upscale(self, cartoon, size):

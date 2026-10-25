@@ -84,10 +84,11 @@ jobs:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           target_commitish: ${{ github.sha }}
           name: ptoart ${{ github.event.inputs.tag || github.ref_name }}
-          prerelease: true
+          prerelease: false
+          make_latest: true
           body_path: packaging/RELEASE_NOTES.md
           files: |
-            dist/ptoart-windows-x64-cpu.zip
+            dist/ptoart-windows-x64.zip
             dist/ptoart-android.apk
             dist/ptoart_weights.pt
             dist/ptoart_weights.onnx

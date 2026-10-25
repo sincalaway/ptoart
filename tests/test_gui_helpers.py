@@ -47,3 +47,15 @@ def test_friendly_error_out_of_memory():
 
     msg = friendly_error(RuntimeError("DefaultCPUAllocator: not enough memory: you tried to allocate 5110235136 bytes."))
     assert "内存不足" in msg
+
+
+def test_face_looks_prefer_face_painter(tmp_path):
+    make(tmp_path, "seg_model_384.pb", "styles/face_paint_512_v2.onnx")
+    models = scan_models(tmp_path)
+    assert models.looks == ["paint"] and not models.face
+    config = build_config(models, mode="photo", look="paint")
+    assert config.style == (tmp_path / "styles" / "face_paint_512_v2.onnx").resolve()
+    make(tmp_path, "ptoart_weights.pt")
+    models = scan_models(tmp_path)
+    assert models.looks == ["paint", "classic"]
+    assert build_config(models, mode="face", look="classic").style is None

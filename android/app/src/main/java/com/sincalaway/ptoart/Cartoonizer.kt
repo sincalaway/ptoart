@@ -142,7 +142,10 @@ class StyleModel(modelFile: File) : Closeable {
  * person mask (ML Kit selfie segmentation, replaces seg_model_384.pb) ->
  * ptoart avatar ONNX generator [1,3,256,256] in [-1,1].
  */
-class Cartoonizer(modelFile: File) : Closeable {
+class Cartoonizer(modelFile: File, private val painter: Boolean = false) : Closeable {
+    /** Generator side: 256 for the ptoart avatar model, 512 for an AnimeGANv2 face painter. */
+    private val n = if (painter) 512 else 256
+
     /** Optional super-resolution for enlarging the 256px cartoon; owned by the caller. */
     var upscaler: Upscaler? = null
 
@@ -289,12 +292,13 @@ class Cartoonizer(modelFile: File) : Closeable {
         return out
     }
 
-    /** Runs the generator at 256x256 and returns the cartoon in [-1,1] CHW order. */
+    /** Runs the generator at n x n and returns the cartoon in [-1,1] CHW order. */
     private fun infer(px: IntArray, mask: FloatArray, n: Int): FloatArray {
         val plane = n * n
         val input = FloatBuffer.allocate(3 * plane)
         for (i in 0 until plane) {
-            val c = px[i]; val a = mask[i]
+            // The face painter sees the raw crop; the avatar model expects a white background.
+            val c = px[i]; val a = if (painter) 1f else mask[i]
             input.put(i, (Color.red(c) * a + (1 - a) * 255f) / 127.5f - 1f)
             input.put(plane + i, (Color.green(c) * a + (1 - a) * 255f) / 127.5f - 1f)
             input.put(2 * plane + i, (Color.blue(c) * a + (1 - a) * 255f) / 127.5f - 1f)
@@ -315,21 +319,20 @@ class Cartoonizer(modelFile: File) : Closeable {
      * full-resolution crop so edges stay sharp. [feather] softens edges for pasting.
      */
     private fun cartoonLayer(face: Bitmap, fullMask: FloatArray, strength: Float, outSize: Int, feather: Boolean): Bitmap {
-        val n = 256
         val fw = face.width
         val small = Bitmap.createScaledBitmap(face, n, n, true)
         val px = IntArray(n * n).also { small.getPixels(it, 0, n, 0, 0, n, n) }
         small.recycle()
-        val mask256 = FloatArray(n * n) { i -> fullMask[((i / n) * fw / n) * fw + (i % n) * fw / n] }
-        val out = infer(px, mask256, n)
+        val maskN = FloatArray(n * n) { i -> fullMask[((i / n) * fw / n) * fw + (i % n) * fw / n] }
+        val out = infer(px, maskN, n)
         val plane = n * n
         val cartoonPx = IntArray(plane) { i ->
             fun v(k: Int) = ((out[k * plane + i] + 1f) * 127.5f).roundToInt().coerceIn(0, 255)
             Color.rgb(v(0), v(1), v(2))
         }
-        val cartoon256 = Bitmap.createBitmap(cartoonPx, n, n, Bitmap.Config.ARGB_8888)
+        val cartoonN = Bitmap.createBitmap(cartoonPx, n, n, Bitmap.Config.ARGB_8888)
         val sr = upscaler
-        val base = if (sr != null && outSize > n) sr.upscale(cartoon256).also { cartoon256.recycle() } else cartoon256
+        val base = if (sr != null && outSize > n) sr.upscale(cartoonN).also { cartoonN.recycle() } else cartoonN
         val cartoon = Bitmap.createScaledBitmap(base, outSize, outSize, true)
         if (cartoon !== base) base.recycle()
         val source = Bitmap.createScaledBitmap(face, outSize, outSize, true)

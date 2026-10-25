@@ -4,7 +4,7 @@
 
 **第一次用？看 [小白使用教程](docs/QUICKSTART.md)** · [English](README_EN.md) · [Windows 便携版说明](packaging/WINDOWS-README.md) · [模型准备](docs/MODELS.md) · [模型下载（Release）](https://github.com/sincalaway/ptoart/releases/latest)
 
-> 当前版本 0.3.4。Windows 双击即开图形界面，安卓 App 导入模型即可用；所有模型都在 [Release](https://github.com/sincalaway/ptoart/releases/latest) 中下载。
+> 当前版本 0.3.5。Windows 双击即开图形界面，安卓 App 导入模型即可用；所有模型都在 [Release](https://github.com/sincalaway/ptoart/releases/latest) 中下载。
 
 ## 先了解能做什么
 
@@ -18,7 +18,7 @@
 
 整图风格可选：`hayao`（宫崎骏）、`shinkai`（新海诚）、`paprika`（今敏）、`celeba_distill`、`face_paint_512_v1`、`face_paint_512_v2`。运行 `python tools/export_styles.py -o weights/styles` 会自动下载并转换全部风格（每个约 8.7 MB）。**AnimeGANv2 权重仅限非商业用途。**
 
-卡通头像生成器只在 256×256 推理。更大的 `--size` 默认用 Lanczos + 轻度锐化放大；加 `--upscale anime` 则用 Real-ESRGAN 超分，能补出清晰线条。透明边缘和强度混合始终使用原分辨率。重构未消除上游训练数据的人群偏差。
+头像和整张照片模式可加 `--style face_paint_512_v2` 改用「动漫脸」画风（GUI 默认推荐）：五官自然、不易变形，对儿童和老人效果明显更好，512 分辨率推理；该权重同样仅限非商业用途。经典卡通生成器只在 256×256 推理。更大的 `--size` 默认用 Lanczos + 轻度锐化放大；加 `--upscale anime` 则用 Real-ESRGAN 超分，能补出清晰线条。透明边缘和强度混合始终使用原分辨率。重构未消除上游训练数据的人群偏差。
 
 | 你想怎么用 | 从哪里开始 |
 | --- | --- |
@@ -72,7 +72,7 @@ C:\ptoart\
 
 ### 1. 下载并完整解压
 
-1. 打开 [Releases 页面](https://github.com/sincalaway/ptoart/releases)，在最新版本的 Assets 里下载 **`ptoart-windows-x64-cpu.zip`**（无需登录，长期保留）。
+1. 打开 [Releases 页面](https://github.com/sincalaway/ptoart/releases)，在最新版本的 Assets 里下载 **`ptoart-windows-x64.zip`**（无需登录，长期保留）。
 2. 解压得到包含 `ptoart.exe` 和 `_internal` 的 `ptoart` 文件夹，放在方便的位置，例如 `C:\ptoart`。**不要只复制 EXE，也不要在 ZIP 内直接运行。**
 3. 可用同一页面的 `SHA256SUMS-all.txt` 核对下载文件；包内 `BUILD.txt` 标明源码提交。EXE 未签名，请确认来自本仓库的 Release。
 

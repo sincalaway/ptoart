@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var ui: ActivityMainBinding
     private var photo: Bitmap? = null
     private var result: Bitmap? = null
-    private var cartoonizer: Cartoonizer? = null
+    private var cartoonizer: Pair<File, Cartoonizer>? = null
     private var styleModel: Pair<File, StyleModel>? = null
     private val modelFile by lazy { File(filesDir, "ptoart_weights.onnx") }
     private val upscalerFile by lazy { File(filesDir, "upscaler.onnx") }
@@ -36,8 +36,8 @@ class MainActivity : AppCompatActivity() {
 
     /** What the user can produce: face modes need the avatar model, styles need their own file. */
     private sealed class Mode(val label: String) {
-        class Face(label: String) : Mode(label)
-        class Photo(label: String) : Mode(label)
+        class Face(label: String, val file: File) : Mode(label)
+        class Photo(label: String, val file: File) : Mode(label)
         class Style(label: String, val file: File) : Mode(label)
         override fun toString() = label
     }
@@ -62,12 +62,12 @@ class MainActivity : AppCompatActivity() {
                         contentResolver.openInputStream(uri)!!.use { i -> tmp.outputStream().use { i.copyTo(it) } }
                         when (ModelInspector.kindOf(tmp)) { // validates before replacing anything
                             ModelKind.AVATAR -> {
-                                cartoonizer?.close(); cartoonizer = null
+                                cartoonizer?.second?.close(); cartoonizer = null
                                 check(tmp.renameTo(modelFile)) { "无法保存模型" }
                                 "已导入卡通头像模型"
                             }
                             ModelKind.UPSCALER -> {
-                                cartoonizer?.upscaler = null
+                                cartoonizer?.second?.upscaler = null
                                 upscaler?.close(); upscaler = null
                                 check(tmp.renameTo(upscalerFile)) { "无法保存模型" }
                                 "已导入超分辨率模型"
@@ -76,6 +76,7 @@ class MainActivity : AppCompatActivity() {
                                 val stem = name.substringBeforeLast('.').ifBlank { "style" }
                                 val target = File(styleDir, "$stem.onnx")
                                 if (styleModel?.first == target) { styleModel?.second?.close(); styleModel = null }
+                                if (cartoonizer?.first == target) { cartoonizer?.second?.close(); cartoonizer = null }
                                 check(tmp.renameTo(target)) { "无法保存模型" }
                                 "已导入风格：${styleNames[stem] ?: stem}"
                             }
@@ -139,9 +140,15 @@ class MainActivity : AppCompatActivity() {
         if (rebuild) {
             val previous = currentMode?.label
             modes = buildList {
+                // AnimeGANv2 face painter keeps faces natural (better on children); listed first.
+                val painter = File(styleDir, "face_paint_512_v2.onnx")
+                if (painter.isFile) {
+                    add(Mode.Face("卡通头像 · 动漫脸（推荐）", painter))
+                    add(Mode.Photo("整张照片 · 动漫脸（推荐）", painter))
+                }
                 if (modelFile.isFile) {
-                    add(Mode.Face("卡通头像（最大的一张脸）"))
-                    add(Mode.Photo("整张照片：所有人脸卡通化，贴回原图"))
+                    add(Mode.Face("卡通头像 · 经典卡通", modelFile))
+                    add(Mode.Photo("整张照片 · 经典卡通", modelFile))
                 }
                 styleDir.listFiles { f -> f.extension == "onnx" }?.sortedBy { it.name }?.forEach {
                     add(Mode.Style("整图风格：${styleNames[it.nameWithoutExtension] ?: it.nameWithoutExtension}", it))
@@ -153,7 +160,8 @@ class MainActivity : AppCompatActivity() {
         val styles = modes.count { it is Mode.Style }
         ui.modelState.text = when {
             modes.isEmpty() -> getString(R.string.model_missing)
-            else -> getString(R.string.model_ready_fmt, if (modelFile.isFile) "已就绪" else "未导入", styles,
+            else -> getString(R.string.model_ready_fmt,
+                if (modes.any { it is Mode.Face }) "已就绪" else "未导入", styles,
                 if (upscalerFile.isFile) "已就绪" else "未导入")
         }
         ui.mode.visibility = if (modes.isEmpty()) View.GONE else View.VISIBLE
@@ -172,14 +180,15 @@ class MainActivity : AppCompatActivity() {
             busy(true, "正在转换…")
             val out = withContext(Dispatchers.Default) {
                 runCatching {
-                    if (mode !is Mode.Style) {
-                        faceModel().upscaler = if (superRes) {
+                    val faceFile = when (mode) { is Mode.Face -> mode.file; is Mode.Photo -> mode.file; else -> null }
+                    if (faceFile != null) {
+                        faceModel(faceFile).upscaler = if (superRes) {
                             upscaler ?: Upscaler(upscalerFile).also { upscaler = it }
                         } else null
                     }
                     when (mode) {
-                        is Mode.Face -> faceModel().convertFace(src, strength, if (transparent) null else Color.WHITE)
-                        is Mode.Photo -> faceModel().convertPhoto(src, strength)
+                        is Mode.Face -> faceModel(mode.file).convertFace(src, strength, if (transparent) null else Color.WHITE)
+                        is Mode.Photo -> faceModel(mode.file).convertPhoto(src, strength)
                         is Mode.Style -> {
                             val current = styleModel
                             val model = if (current?.first == mode.file) current.second else {
@@ -200,7 +209,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun faceModel() = cartoonizer ?: Cartoonizer(modelFile).also { cartoonizer = it }
+    private fun faceModel(file: File): Cartoonizer {
+        cartoonizer?.let { if (it.first == file) return it.second else it.second.close() }
+        return Cartoonizer(file, painter = file != modelFile).also { cartoonizer = file to it }
+    }
 
     private fun displayName(uri: Uri): String? =
         contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
@@ -240,7 +252,7 @@ class MainActivity : AppCompatActivity() {
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_LONG).show()
 
     override fun onDestroy() {
-        cartoonizer?.close()
+        cartoonizer?.second?.close()
         styleModel?.second?.close()
         upscaler?.close()
         super.onDestroy()

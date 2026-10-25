@@ -22,6 +22,8 @@ STYLE_NAMES = {
 }
 UPSCALE_NAMES = {"anime": "动漫（快）", "general": "通用（细节多）"}
 MODES = {"face": "卡通头像", "photo": "整张照片", "style": "动漫风格"}
+# Face looks for avatar/whole-photo modes: key -> (label, style model or None for the ptoart generator).
+FACE_LOOKS = {"paint": ("动漫脸（推荐）", "face_paint_512_v2"), "classic": ("经典卡通", None)}
 IMAGE_TYPES = (("图片", "*.jpg *.jpeg *.png *.bmp *.webp"), ("所有文件", "*.*"))
 
 
@@ -29,12 +31,23 @@ IMAGE_TYPES = (("图片", "*.jpg *.jpeg *.png *.bmp *.webp"), ("所有文件", "
 class Models:
     root: Path
     face: bool = False          # ptoart_weights.pt + seg_model_384.pb
+    seg: bool = False           # seg_model_384.pb
     styles: dict = field(default_factory=dict)    # key -> path
     upscalers: dict = field(default_factory=dict)  # key -> path
 
     @property
+    def looks(self):
+        """Face looks usable now, recommended first."""
+        out = []
+        if self.seg and "face_paint_512_v2" in self.styles:
+            out.append("paint")
+        if self.face:
+            out.append("classic")
+        return out
+
+    @property
     def any(self):
-        return self.face or bool(self.styles)
+        return bool(self.looks) or bool(self.styles)
 
 
 def find_model_dir():
@@ -54,7 +67,8 @@ def find_model_dir():
 def scan_models(root):
     root = Path(root)
     models = Models(root=root)
-    models.face = (root / "ptoart_weights.pt").is_file() and (root / "seg_model_384.pb").is_file()
+    models.seg = (root / "seg_model_384.pb").is_file()
+    models.face = (root / "ptoart_weights.pt").is_file() and models.seg
     styles = root / "styles"
     if styles.is_dir():
         found = {p.stem: p for p in styles.glob("*.onnx")}
@@ -70,7 +84,8 @@ def style_label(key):
     return STYLE_NAMES.get(key, key)
 
 
-def build_config(models, *, mode, style=None, size=1024, strength=1.0, transparent=False, upscale=None):
+def build_config(models, *, mode, style=None, size=1024, strength=1.0, transparent=False, upscale=None,
+                 look="classic"):
     """Map UI choices to an ArtConfig (Windows build: CPU + SFD detector)."""
     from ptoart.config import ArtConfig
 
@@ -78,7 +93,8 @@ def build_config(models, *, mode, style=None, size=1024, strength=1.0, transpare
         backend="torch", device="cpu", detector="sfd", model_dir=models.root,
         output=mode, size=size if mode == "face" else 256, strength=strength,
         background=None if (transparent and mode == "face") else (255, 255, 255),
-        style=str(models.styles[style]) if mode == "style" else None,
+        style=(str(models.styles[style]) if mode == "style"
+               else str(models.styles[FACE_LOOKS[look][1]]) if FACE_LOOKS[look][1] else None),
         upscale=str(models.upscalers[upscale]) if upscale else None,
     )
 
@@ -218,6 +234,10 @@ def run_gui(screenshot=None):
             self.strength = ctk.CTkSlider(self.opts, from_=0, to=100, number_of_steps=20, button_color=ACCENT,
                                           progress_color=ACCENT, command=self._ui_strength_changed)
             self.strength.set(100)
+            self.look_label = ctk.CTkLabel(self.opts, text="画风", font=font(12), text_color=MUTED)
+            self.look_menu = ctk.CTkSegmentedButton(self.opts, values=[v[0] for v in FACE_LOOKS.values()],
+                                                    font=font(13), selected_color=ACCENT,
+                                                    selected_hover_color=ACCENT_HOVER)
             self.transparent = ctk.CTkSwitch(self.opts, text="透明背景（PNG）", font=font(13),
                                              progress_color=ACCENT)
 
@@ -336,6 +356,11 @@ def run_gui(screenshot=None):
                 row += 1
                 self.style_menu.grid(row=row, column=0, sticky="ew", pady=(2, 10))
                 row += 1
+            if mode in ("face", "photo") and len(self.models.looks) > 1:
+                self.look_label.grid(row=row, column=0, sticky="w")
+                row += 1
+                self.look_menu.grid(row=row, column=0, sticky="ew", pady=(2, 10))
+                row += 1
             if mode == "face":
                 self.size_label.grid(row=row, column=0, sticky="w")
                 row += 1
@@ -373,9 +398,12 @@ def run_gui(screenshot=None):
             else:
                 self.upscale.deselect()
                 self.upscale.configure(state="disabled")
+            looks = m.looks
+            if looks and self.look_menu.get() not in [FACE_LOOKS[k][0] for k in looks]:
+                self.look_menu.set(FACE_LOOKS[looks[0]][0])
             ok, no = "✓", "✗"
             self.model_status.configure(text=(
-                f"模型  {ok if m.face else no} 头像/整张照片   {ok if m.styles else no} 风格 {len(m.styles)} 种   "
+                f"模型  {ok if looks else no} 头像/整张照片   {ok if m.styles else no} 风格 {len(m.styles)} 种   "
                 f"{ok if m.upscalers else no} 超分"))
             self._ui_update_options()
 
@@ -390,11 +418,11 @@ def run_gui(screenshot=None):
 
         def _ui_update_ready(self):
             mode = self._ui_mode_key()
-            have = self.models.face if mode != "style" else bool(self.models.styles)
+            have = bool(self.models.looks) if mode != "style" else bool(self.models.styles)
             ready = bool(self.sources) and have and not self.working
             self.go_btn.configure(state="normal" if ready else "disabled")
             if not have and not self.working:
-                need = ("ptoart_weights.pt 和 seg_model_384.pb" if mode != "style"
+                need = ("seg_model_384.pb 和 ptoart_weights.pt（或 styles 里的 face_paint_512_v2.onnx）" if mode != "style"
                         else "styles 文件夹中的风格模型（如 hayao.onnx）")
                 self.status.configure(text=f"缺少模型：请把 {need} 放进模型文件夹，再点「重新检测模型」")
             elif not self.working and not self.sources:
@@ -428,7 +456,12 @@ def run_gui(screenshot=None):
             if self.upscale.get() and self.models.upscalers:
                 upscale = next((k for k in self.models.upscalers
                                 if UPSCALE_NAMES.get(k, k) == self.upscale_menu.get()), None)
-            return dict(mode=mode, style=style, size=int(self.size_menu.get()),
+            look = "classic"
+            if mode != "style":
+                looks = self.models.looks
+                look = next((k for k in looks if FACE_LOOKS[k][0] == self.look_menu.get()),
+                            looks[0] if looks else "classic")
+            return dict(mode=mode, style=style, look=look, size=int(self.size_menu.get()),
                         strength=round(self.strength.get() / 100, 2),
                         transparent=bool(self.transparent.get()) and mode == "face", upscale=upscale)
 
@@ -448,7 +481,7 @@ def run_gui(screenshot=None):
 
             key = tuple(sorted(opts.items()))
             if key not in self.pipelines:
-                if opts["mode"] != "style" and not any(k for k in self.pipelines if dict(k)["mode"] != "style"):
+                if opts["mode"] != "style" and not any(dict(k)["mode"] != "style" for k in self.pipelines):
                     self.events.put(("status", "正在加载模型（首次使用需联网下载人脸检测数据，请稍候）…"))
                 else:
                     self.events.put(("status", "正在加载模型…"))
