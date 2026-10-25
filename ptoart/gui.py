@@ -150,8 +150,10 @@ def run_gui(screenshot=None):
         def __init__(self):
             super().__init__(fg_color=BG)
             self.title("ptoart · 照片变卡通")
-            self.geometry("1180x760")
-            self.minsize(980, 640)
+            width = min(1180, int(self.winfo_screenwidth() * 0.92))
+            height = min(760, int(self.winfo_screenheight() * 0.85))
+            self.geometry(f"{width}x{height}")
+            self.minsize(900, 600)
             self.models = scan_models(find_model_dir())
             self.sources: list[Path] = []
             self.result = None
@@ -175,15 +177,15 @@ def run_gui(screenshot=None):
             side.grid_columnconfigure(0, weight=1)
             r = 0
             ctk.CTkLabel(side, text="ptoart", font=font(28, "bold"), text_color=ACCENT).grid(
-                row=r, column=0, padx=24, pady=(26, 0), sticky="w")
+                row=r, column=0, padx=24, pady=(20, 0), sticky="w")
             r += 1
             ctk.CTkLabel(side, text="照片一键变卡通 · 全部本地离线处理", font=font(12), text_color=MUTED).grid(
-                row=r, column=0, padx=24, pady=(0, 18), sticky="w")
+                row=r, column=0, padx=24, pady=(0, 14), sticky="w")
             r += 1
 
             self.pick_btn = ctk.CTkButton(side, text="＋  选择照片", height=44, font=font(15, "bold"),
                                           fg_color=ACCENT, hover_color=ACCENT_HOVER, command=self._ui_pick)
-            self.pick_btn.grid(row=r, column=0, padx=24, pady=(0, 18), sticky="ew")
+            self.pick_btn.grid(row=r, column=0, padx=24, pady=(0, 10), sticky="ew")
             r += 1
 
             self._ui_section(side, "效果", r)
@@ -236,7 +238,7 @@ def run_gui(screenshot=None):
             self.model_status.grid(row=r, column=0, padx=24, pady=(0, 6), sticky="w")
             r += 1
             links = ctk.CTkFrame(side, fg_color="transparent")
-            links.grid(row=r, column=0, padx=18, pady=(0, 20), sticky="ew")
+            links.grid(row=r, column=0, padx=18, pady=(0, 14), sticky="ew")
             r += 1
             for text, cmd in (("打开模型文件夹", self._ui_open_models), ("重新检测模型", self._ui_rescan)):
                 ctk.CTkButton(links, text=text, font=font(12), height=28, fg_color="transparent",
@@ -363,8 +365,8 @@ def run_gui(screenshot=None):
                 self.upscale.configure(state="disabled")
             ok, no = "✓", "✗"
             self.model_status.configure(text=(
-                f"{ok if m.face else no} 卡通头像模型    {ok if m.styles else no} 风格 {len(m.styles)} 种    "
-                f"{ok if m.upscalers else no} 超分\n模型文件夹：{m.root}"))
+                f"模型  {ok if m.face else no} 卡通头像   {ok if m.styles else no} 风格 {len(m.styles)} 种   "
+                f"{ok if m.upscalers else no} 超分"))
             self._ui_update_options()
 
         def _ui_rescan(self):
@@ -568,7 +570,7 @@ def _demo_and_capture(app, target, Image):
 
     y, x = np.mgrid[0:600, 0:480]
     sample = np.dstack([(x * 255 // 480), (y * 255 // 600), np.full_like(x, 180)]).astype(np.uint8)
-    app.geometry("1180x760+20+20")
+    app.geometry("1000x700+10+10")
     app.update()
     app._ui_show(app.before, Image.fromarray(sample))
     app._ui_show(app.after_panel, Image.fromarray(255 - sample))
