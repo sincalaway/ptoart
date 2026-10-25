@@ -33,22 +33,29 @@
 
 **命令行**：`--style jp_face|ghibli_face|portrait_sketch|face_paint_512_v2` 配合 `--output face/photo` 换画风。
 
-## 新功能（v0.3.0）
+## 全部功能一览
 
-- `--output photo`：所有人脸卡通化后羽化贴回原图，原尺寸输出（安卓同步支持）。
-- `--size`：高清头像，最高 2048（安卓头像默认 512）。
-- `--style`：AnimeGANv2 整图风格，6 种风格可选，风景和全身照也能用。
-- `--upscale anime|general`：Real-ESRGAN 超分放大，头像和整图更清晰（安卓有开关）。
-- **Windows 图形界面**：双击 `ptoart.exe` 打开窗口，选模式、风格、尺寸、强度、超分，原图与效果并排预览，支持多张批量。
-- 新增[小白使用教程](https://github.com/sincalaway/ptoart/blob/refactor/ptoart-20261023/docs/QUICKSTART.md)；Windows 包内附拖拽即用的 `.bat`。
-- 所有模型直接附在 Release 中，无需再去网盘或自行转换。
+| 功能 | Windows 界面 | 命令行 | 安卓 |
+| --- | --- | --- | --- |
+| 卡通头像：裁出人脸生成头像，可透明背景 | 模式选「卡通头像」 | `ptoart.exe convert 照片.jpg 头像.png` | 模式「卡通头像 · 画风」 |
+| 整张照片：所有人脸卡通化后贴回原图，原尺寸 | 模式选「整张照片」 | `--output photo`（`--max-faces` 默认 10） | 模式「整张照片 · 画风」 |
+| 整图风格：整张图变动漫，风景、全身照都行，11 种 | 模式选「整图风格」+ 风格 | `--style hayao` 等 | 模式「整图风格 · 风格名」 |
+| 头像画风：5 种（见上表） | 「画风」下拉框，下方有说明 | `--style jp_face` 等 | 模式下拉框 |
+| 高清尺寸：512 / 1024 / 2048 | 「尺寸」 | `--size 1024` | 头像默认 512 |
+| 卡通强度 0–100% | 「强度」滑块 | `--strength 0.8` | 滑块 |
+| 超分放大：Real-ESRGAN x4 | 「超分辨率增强」开关 | `--upscale anime\|general` | 开关 |
+| 自动保存 / 撤销 / 重做 / 另存为 | 每次自动存到 `ptoart输出` | 指定输出路径 | 「保存 PNG」 |
+| 批量处理 | 一次选多张 | `ptoart.exe batch 照片文件夹 输出文件夹` | — |
+| 拖拽即用 | 把照片拖到包内 `.bat` | — | — |
+
+小白教程：[QUICKSTART](https://github.com/sincalaway/ptoart/blob/refactor/ptoart-20261023/docs/QUICKSTART.md)
 
 `SHA256SUMS-all.txt` 可用于校验下载文件。
 
 ## 重要说明
 
-- 模型不打进 EXE/APK，单独附在本 Release：Windows 把 `.pt`、`.pb` 放进 EXE 旁的 `weights\`；安卓导入 `.onnx`。
+- 头像、分割、风格、超分模型单独附在本 Release：Windows 把 `.pt`、`.pb` 放进 EXE 旁的 `weights\`；安卓导入 `.onnx`。Windows 包已内置人脸检测模型（`weights\torch`），无需联网。
 - Windows 版需要 `ptoart_weights.pt` + `seg_model_384.pb`；安卓版只需 `ptoart_weights.onnx`（人脸检测与人像分割使用内置 ML Kit 模型）。
-- 整图风格：解压 `ptoart-styles.zip`，Windows 放到 `weights\styles\`；安卓在 App 中「导入模型」多选导入。
+- 风格包（整图风格 + 4 种头像画风）：解压 `ptoart-styles.zip`，Windows 放到 `weights\styles\`；安卓在 App 中「导入模型」多选导入。
 - 安卓 APK 使用调试签名，安装时需允许“未知来源”；EXE 未签名。
 - 这是预览版：自动构建与自检已通过，真实照片 + 官方权重的出图效果未做完整验收。
