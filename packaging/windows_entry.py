@@ -65,6 +65,14 @@ def run(argv=None):
     args = list(sys.argv[1:] if argv is None else argv)
     if args == ["--self-test"]:
         return frozen_self_test()
+    if args == ["gui"] or (not args and getattr(sys, "frozen", False)):
+        # Double-clicked ptoart.exe: open the window instead of a bare console.
+        from ptoart.gui import hide_own_console, run_gui
+        hide_own_console()
+        return run_gui()
+    if len(args) == 2 and args[0] == "--gui-screenshot":
+        from ptoart.gui import run_gui
+        return run_gui(screenshot=args[1])
     # Avoid a Windows C++/dlib dependency. Explicit CLI selections are respected.
     if args and args[0] in {"convert", "batch", "doctor"}:
         if not any(arg == "--detector" or arg.startswith("--detector=") for arg in args):

@@ -47,7 +47,7 @@ jobs:
       - name: Build portable console EXE
         shell: pwsh
         run: |
-          python -m PyInstaller --noconfirm --clean --onedir --console --noupx --name ptoart --paths . --collect-all face_alignment --collect-all onnxruntime --hidden-import face_alignment.detection.sfd --hidden-import utils.preprocess --hidden-import utils.face_seg --hidden-import models.networks --copy-metadata face-alignment --exclude-module tkinter --exclude-module matplotlib --exclude-module IPython --exclude-module pytest packaging/windows_entry.py
+          python -m PyInstaller --noconfirm --clean --onedir --console --noupx --name ptoart --paths . --collect-all face_alignment --collect-all onnxruntime --hidden-import face_alignment.detection.sfd --hidden-import utils.preprocess --hidden-import utils.face_seg --hidden-import models.networks --copy-metadata face-alignment --collect-all customtkinter --hidden-import ptoart.gui --exclude-module matplotlib --exclude-module IPython --exclude-module pytest packaging/windows_entry.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify frozen executable outside source tree
         shell: pwsh
@@ -60,12 +60,19 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'EXE help failed' }
           & $exe --self-test
           if ($LASTEXITCODE -ne 0) { throw 'Frozen runtime self-test failed' }
+          & $exe --gui-screenshot "$env:GITHUB_WORKSPACE/gui-screenshot.png"
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path "$env:GITHUB_WORKSPACE/gui-screenshot.png")) { throw 'GUI failed to start' }
           & $exe doctor --aligned --device cpu --model-dir "$env:RUNNER_TEMP/ptoart-no-models"
           if ($LASTEXITCODE -ne 2) { throw 'Missing models must return exit code 2' }
           Pop-Location
           # GitHub's pwsh wrapper propagates the last native exit code. The
           # doctor exit code 2 above is expected, not a failed smoke test.
           $global:LASTEXITCODE = 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gui-screenshot
+          path: gui-screenshot.png
+          retention-days: 7
       - name: Assemble portable ZIP and checksum
         shell: pwsh
         run: |
