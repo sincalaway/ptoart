@@ -158,14 +158,14 @@ def run_gui(screenshot=None):
             self.result_mode = None
             self.pipelines = {}
             self.events = queue.Queue()
-            self.busy = False
-            self._build()
-            self._refresh_models()
-            self.after(100, self._poll)
-            self.protocol("WM_DELETE_WINDOW", self._close)
+            self.working = False
+            self._ui_build()
+            self._ui_refresh_models()
+            self.after(100, self._ui_poll)
+            self.protocol("WM_DELETE_WINDOW", self._ui_close)
 
         # ---- layout
-        def _build(self):
+        def _ui_build(self):
             self.grid_columnconfigure(1, weight=1)
             self.grid_rowconfigure(0, weight=1)
 
@@ -182,15 +182,15 @@ def run_gui(screenshot=None):
             r += 1
 
             self.pick_btn = ctk.CTkButton(side, text="＋  选择照片", height=44, font=font(15, "bold"),
-                                          fg_color=ACCENT, hover_color=ACCENT_HOVER, command=self._pick)
+                                          fg_color=ACCENT, hover_color=ACCENT_HOVER, command=self._ui_pick)
             self.pick_btn.grid(row=r, column=0, padx=24, pady=(0, 18), sticky="ew")
             r += 1
 
-            self._section(side, "效果", r)
+            self._ui_section(side, "效果", r)
             r += 1
             self.mode = ctk.CTkSegmentedButton(side, values=list(MODES.values()), font=font(13),
                                                selected_color=ACCENT, selected_hover_color=ACCENT_HOVER,
-                                               command=lambda _v: self._update_options())
+                                               command=lambda _v: self._ui_update_options())
             self.mode.grid(row=r, column=0, padx=24, pady=(4, 6), sticky="ew")
             r += 1
             self.mode_hint = ctk.CTkLabel(side, text="", font=font(12), text_color=MUTED, wraplength=270,
@@ -212,15 +212,15 @@ def run_gui(screenshot=None):
             self.style_label = ctk.CTkLabel(self.opts, text="风格", font=font(12), text_color=MUTED)
             self.strength_label = ctk.CTkLabel(self.opts, text="卡通强度 100%", font=font(12), text_color=MUTED)
             self.strength = ctk.CTkSlider(self.opts, from_=0, to=100, number_of_steps=20, button_color=ACCENT,
-                                          progress_color=ACCENT, command=self._strength_changed)
+                                          progress_color=ACCENT, command=self._ui_strength_changed)
             self.strength.set(100)
             self.transparent = ctk.CTkSwitch(self.opts, text="透明背景（PNG）", font=font(13),
                                              progress_color=ACCENT)
 
-            self._section(side, "清晰度", r)
+            self._ui_section(side, "清晰度", r)
             r += 1
             self.upscale = ctk.CTkSwitch(side, text="超分辨率增强", font=font(13), progress_color=ACCENT,
-                                         command=self._update_options)
+                                         command=self._ui_update_options)
             self.upscale.grid(row=r, column=0, padx=24, pady=(4, 4), sticky="w")
             r += 1
             self.upscale_menu = ctk.CTkOptionMenu(side, values=["—"], font=font(13), height=32,
@@ -238,7 +238,7 @@ def run_gui(screenshot=None):
             links = ctk.CTkFrame(side, fg_color="transparent")
             links.grid(row=r, column=0, padx=18, pady=(0, 20), sticky="ew")
             r += 1
-            for text, cmd in (("打开模型文件夹", self._open_models), ("重新检测模型", self._rescan)):
+            for text, cmd in (("打开模型文件夹", self._ui_open_models), ("重新检测模型", self._ui_rescan)):
                 ctk.CTkButton(links, text=text, font=font(12), height=28, fg_color="transparent",
                               text_color=ACCENT, hover_color=BG, command=cmd).pack(side="left", padx=4)
 
@@ -247,8 +247,8 @@ def run_gui(screenshot=None):
             main.grid(row=0, column=1, sticky="nsew", padx=22, pady=22)
             main.grid_columnconfigure((0, 1), weight=1, uniform="p")
             main.grid_rowconfigure(0, weight=1)
-            self.before = self._panel(main, "原图", 0)
-            self.after_panel = self._panel(main, "效果", 1)
+            self.before = self._ui_panel(main, "原图", 0)
+            self.after_panel = self._ui_panel(main, "效果", 1)
 
             bar = ctk.CTkFrame(main, fg_color="transparent")
             bar.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(16, 0))
@@ -258,21 +258,21 @@ def run_gui(screenshot=None):
             self.progress = ctk.CTkProgressBar(bar, mode="indeterminate", progress_color=ACCENT, height=6)
             self.save_btn = ctk.CTkButton(bar, text="保存结果", width=120, height=42, font=font(14),
                                           fg_color="transparent", border_width=2, border_color=ACCENT,
-                                          text_color=ACCENT, hover_color=CARD, command=self._save,
+                                          text_color=ACCENT, hover_color=CARD, command=self._ui_save,
                                           state="disabled")
             self.save_btn.grid(row=0, column=1, padx=(10, 0))
             self.go_btn = ctk.CTkButton(bar, text="开始转换  →", width=170, height=42, font=font(15, "bold"),
-                                        fg_color=ACCENT, hover_color=ACCENT_HOVER, command=self._start,
+                                        fg_color=ACCENT, hover_color=ACCENT_HOVER, command=self._ui_start,
                                         state="disabled")
             self.go_btn.grid(row=0, column=2, padx=(10, 0))
 
             self.mode.set(MODES["face"])
 
-        def _section(self, parent, text, row):
+        def _ui_section(self, parent, text, row):
             ctk.CTkLabel(parent, text=text, font=font(13, "bold")).grid(row=row, column=0, padx=24,
                                                                         pady=(8, 0), sticky="w")
 
-        def _panel(self, parent, title, col):
+        def _ui_panel(self, parent, title, col):
             card = ctk.CTkFrame(parent, corner_radius=16, fg_color=CARD)
             card.grid(row=0, column=col, sticky="nsew", padx=(0 if col else 0, 10 if col == 0 else 0))
             card.grid_rowconfigure(1, weight=1)
@@ -281,19 +281,19 @@ def run_gui(screenshot=None):
                 row=0, column=0, padx=18, pady=(14, 0), sticky="w")
             label = ctk.CTkLabel(card, text="", font=font(13), text_color=MUTED)
             label.grid(row=1, column=0, sticky="nsew", padx=14, pady=14)
-            label.bind("<Configure>", lambda _e, lb=label: self._redraw(lb))
+            label.bind("<Configure>", lambda _e, lb=label: self._ui_redraw(lb))
             label.image_data = None
             return label
 
         # ---- images
-        def _show(self, label, image, placeholder=""):
+        def _ui_show(self, label, image, placeholder=""):
             label.image_data = image
             if image is None:
                 label.configure(image=None, text=placeholder)
                 label._ctk_img = None
-            self._redraw(label)
+            self._ui_redraw(label)
 
-        def _redraw(self, label):
+        def _ui_redraw(self, label):
             image = getattr(label, "image_data", None)
             if image is None:
                 return
@@ -305,13 +305,13 @@ def run_gui(screenshot=None):
             label.configure(image=ctk_img, text="")
 
         # ---- options
-        def _mode_key(self):
+        def _ui_mode_key(self):
             return next(k for k, v in MODES.items() if v == self.mode.get())
 
-        def _update_options(self):
+        def _ui_update_options(self):
             for w in self.opts.winfo_children():
                 w.grid_forget()
-            mode = self._mode_key()
+            mode = self._ui_mode_key()
             hints = {
                 "face": "最大的一张脸生成卡通头像，适合做头像。",
                 "photo": "照片里每张脸都卡通化并贴回原图，身体和背景不变。",
@@ -341,12 +341,12 @@ def run_gui(screenshot=None):
                 self.upscale_menu.grid()
             else:
                 self.upscale_menu.grid_remove()
-            self._update_ready()
+            self._ui_update_ready()
 
-        def _strength_changed(self, value):
+        def _ui_strength_changed(self, value):
             self.strength_label.configure(text=f"卡通强度 {int(value)}%")
 
-        def _refresh_models(self):
+        def _ui_refresh_models(self):
             m = self.models
             styles = [style_label(k) for k in m.styles] or ["未找到风格模型"]
             self.style_menu.configure(values=styles)
@@ -365,50 +365,50 @@ def run_gui(screenshot=None):
             self.model_status.configure(text=(
                 f"{ok if m.face else no} 卡通头像模型    {ok if m.styles else no} 风格 {len(m.styles)} 种    "
                 f"{ok if m.upscalers else no} 超分\n模型文件夹：{m.root}"))
-            self._update_options()
+            self._ui_update_options()
 
-        def _rescan(self):
+        def _ui_rescan(self):
             self.models = scan_models(find_model_dir())
-            self._close_pipelines()
-            self._refresh_models()
+            self._ui_close_pipelines()
+            self._ui_refresh_models()
 
-        def _open_models(self):
+        def _ui_open_models(self):
             self.models.root.mkdir(parents=True, exist_ok=True)
             _open_path(self.models.root)
 
-        def _update_ready(self):
-            mode = self._mode_key()
+        def _ui_update_ready(self):
+            mode = self._ui_mode_key()
             have = self.models.face if mode != "style" else bool(self.models.styles)
-            ready = bool(self.sources) and have and not self.busy
+            ready = bool(self.sources) and have and not self.working
             self.go_btn.configure(state="normal" if ready else "disabled")
-            if not have and not self.busy:
+            if not have and not self.working:
                 need = ("photo2cartoon_weights.pt 和 seg_model_384.pb" if mode != "style"
                         else "styles 文件夹中的风格模型（如 hayao.onnx）")
                 self.status.configure(text=f"缺少模型：请把 {need} 放进模型文件夹，再点「重新检测模型」")
-            elif not self.busy and not self.sources:
+            elif not self.working and not self.sources:
                 self.status.configure(text="选择一张照片开始")
 
         # ---- actions
-        def _pick(self):
+        def _ui_pick(self):
             paths = filedialog.askopenfilenames(title="选择照片（可多选）", filetypes=IMAGE_TYPES)
             if not paths:
                 return
             self.sources = [Path(p) for p in paths]
             try:
-                self._show(self.before, Image.fromarray(read_image(self.sources[0])))
+                self._ui_show(self.before, Image.fromarray(read_image(self.sources[0])))
             except Exception as exc:
                 messagebox.showerror("ptoart", friendly_error(exc))
                 self.sources = []
                 return
-            self._show(self.after_panel, None, "")
+            self._ui_show(self.after_panel, None, "")
             self.result = None
             self.save_btn.configure(state="disabled")
             extra = f"（共 {len(self.sources)} 张，结果自动保存到照片旁的 ptoart输出 文件夹）" if len(self.sources) > 1 else ""
             self.status.configure(text=f"{self.sources[0].name}{extra}")
-            self._update_ready()
+            self._ui_update_ready()
 
-        def _options(self):
-            mode = self._mode_key()
+        def _ui_options(self):
+            mode = self._ui_mode_key()
             style = None
             if mode == "style":
                 style = next((k for k in self.models.styles if style_label(k) == self.style_menu.get()), None)
@@ -420,18 +420,18 @@ def run_gui(screenshot=None):
                         strength=round(self.strength.get() / 100, 2),
                         transparent=bool(self.transparent.get()) and mode == "face", upscale=upscale)
 
-        def _start(self):
-            if self.busy or not self.sources:
+        def _ui_start(self):
+            if self.working or not self.sources:
                 return
-            opts = self._options()
-            self.busy = True
+            opts = self._ui_options()
+            self.working = True
             self.go_btn.configure(state="disabled", text="处理中…")
             self.pick_btn.configure(state="disabled")
             self.progress.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(10, 0))
             self.progress.start()
-            threading.Thread(target=self._work, args=(list(self.sources), opts), daemon=True).start()
+            threading.Thread(target=self._ui_work, args=(list(self.sources), opts), daemon=True).start()
 
-        def _pipeline(self, opts):
+        def _ui_pipeline(self, opts):
             from ptoart.pipeline import ArtPipeline
 
             key = tuple(sorted(opts.items()))
@@ -443,9 +443,9 @@ def run_gui(screenshot=None):
                 self.pipelines[key] = ArtPipeline(build_config(self.models, **opts))
             return self.pipelines[key]
 
-        def _work(self, sources, opts):
+        def _ui_work(self, sources, opts):
             try:
-                pipeline = self._pipeline(opts)
+                pipeline = self._ui_pipeline(opts)
                 many = len(sources) > 1
                 failures = []
                 last = None
@@ -472,45 +472,45 @@ def run_gui(screenshot=None):
             except Exception as exc:
                 self.events.put(("error", friendly_error(exc)))
 
-        def _poll(self):
+        def _ui_poll(self):
             try:
                 while True:
                     kind, data = self.events.get_nowait()
                     if kind == "status":
                         self.status.configure(text=data)
                     elif kind == "before":
-                        self._show(self.before, Image.fromarray(data))
+                        self._ui_show(self.before, Image.fromarray(data))
                     elif kind == "result":
                         array, opts, src = data
                         self.result, self.result_opts, self.result_src = array, opts, src
-                        self._show(self.after_panel, Image.fromarray(array))
+                        self._ui_show(self.after_panel, Image.fromarray(array))
                     elif kind == "done":
-                        self._finish("完成！点「保存结果」保存图片。")
+                        self._ui_finish("完成！点「保存结果」保存图片。")
                         self.save_btn.configure(state="normal")
                     elif kind == "batch_done":
                         folder, total, failures = data
-                        self._finish(f"完成 {total - len(failures)}/{total} 张，已保存到 {folder}")
+                        self._ui_finish(f"完成 {total - len(failures)}/{total} 张，已保存到 {folder}")
                         self.save_btn.configure(state="normal")
                         if failures:
                             messagebox.showwarning("部分照片未处理", "\n\n".join(failures[:8]))
                         _open_path(folder)
                     elif kind == "error":
-                        self._finish("处理失败")
+                        self._ui_finish("处理失败")
                         messagebox.showerror("ptoart", data)
             except queue.Empty:
                 pass
-            self.after(100, self._poll)
+            self.after(100, self._ui_poll)
 
-        def _finish(self, text):
-            self.busy = False
+        def _ui_finish(self, text):
+            self.working = False
             self.progress.stop()
             self.progress.grid_forget()
             self.go_btn.configure(text="开始转换  →")
             self.pick_btn.configure(state="normal")
             self.status.configure(text=text)
-            self._update_ready()
+            self._ui_update_ready()
 
-        def _save(self):
+        def _ui_save(self):
             if self.result is None:
                 return
             opts = self.result_opts
@@ -532,7 +532,7 @@ def run_gui(screenshot=None):
             except Exception as exc:
                 messagebox.showerror("ptoart", friendly_error(exc))
 
-        def _close_pipelines(self):
+        def _ui_close_pipelines(self):
             for p in self.pipelines.values():
                 try:
                     p.close()
@@ -540,8 +540,8 @@ def run_gui(screenshot=None):
                     pass
             self.pipelines.clear()
 
-        def _close(self):
-            self._close_pipelines()
+        def _ui_close(self):
+            self._ui_close_pipelines()
             self.destroy()
 
     app = App()
@@ -570,8 +570,8 @@ def _demo_and_capture(app, target, Image):
     sample = np.dstack([(x * 255 // 480), (y * 255 // 600), np.full_like(x, 180)]).astype(np.uint8)
     app.geometry("1180x760+20+20")
     app.update()
-    app._show(app.before, Image.fromarray(sample))
-    app._show(app.after_panel, Image.fromarray(255 - sample))
+    app._ui_show(app.before, Image.fromarray(sample))
+    app._ui_show(app.after_panel, Image.fromarray(255 - sample))
     app.status.configure(text="预览截图（CI）")
     app.lift()
     app.attributes("-topmost", True)
@@ -582,4 +582,4 @@ def _demo_and_capture(app, target, Image):
     x0, y0 = app.winfo_rootx(), app.winfo_rooty()
     shot = ImageGrab.grab(bbox=(x0, y0, x0 + app.winfo_width(), y0 + app.winfo_height()))
     shot.save(target)
-    app._close()
+    app._ui_close()
