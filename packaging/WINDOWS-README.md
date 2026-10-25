@@ -14,6 +14,8 @@
 
 `SHA256SUMS.txt` 用于核对内层 ZIP；`BUILD.txt` 标记源码提交，`build-dependencies.txt` 记录构建依赖。EXE 未签名，请只运行可信仓库及运行中的产物，不要为来源不明的程序关闭系统防护。
 
+> 不想敲命令：放好模型后，把照片直接拖到包内的 `1-avatar.bat`（卡通头像）、`2-whole-photo.bat`（整张照片）或 `3-style-hayao.bat`（宫崎骏风格）上，结果在 `output` 文件夹。详见 `QUICKSTART.md`。
+
 ## 2. 准备权重和照片
 
 权重不在 EXE 包内，但都附在同一个 [Release](https://github.com/sincalaway/ptoart/releases/latest) 的 Assets 里：`photo2cartoon_weights.pt`、`seg_model_384.pb`（必需），`photo2cartoon_weights.onnx`（可选），`ptoart-styles-animeganv2.zip`（解压到 `weights\styles\`）、`ptoart-upscalers-realesrgan.zip`（解压到 `weights\upscale\`）。包内也附有 `MODELS.md`。

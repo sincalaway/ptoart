@@ -2,7 +2,7 @@
 
 将人像照片转换为卡通头像的命令行工具，基于 [minivision-ai/photo2cartoon](https://github.com/minivision-ai/photo2cartoon) 重构。支持 Windows 便携 EXE、Python CLI 和 Python API，以及单图、批量、透明背景和强度混合。
 
-[English](README_EN.md) · [Windows 便携版说明](packaging/WINDOWS-README.md) · [模型准备](docs/MODELS.md) · [模型下载（Release）](https://github.com/sincalaway/ptoart/releases/latest)
+**第一次用？看 [小白使用教程](docs/QUICKSTART.md)** · [English](README_EN.md) · [Windows 便携版说明](packaging/WINDOWS-README.md) · [模型准备](docs/MODELS.md) · [模型下载（Release）](https://github.com/sincalaway/ptoart/releases/latest)
 
 > **当前为 0.2.0 工程预览版，不是开箱即用的完整模型包。** Windows 自动构建和打包自检已通过，但**官方模型权重不随包提供，真实照片的完整检测 → 分割 → 卡通出图尚未验证**。请先准备可信权重再尝试；构建成功、`doctor` 通过或随机权重自检成功，都不等于真实出图质量已验收。
 

@@ -16,6 +16,7 @@
 - `--size`：高清头像，最高 2048（安卓头像默认 512）。
 - `--style`：AnimeGANv2 整图风格，6 种风格可选，风景和全身照也能用。
 - `--upscale anime|general`：Real-ESRGAN 超分放大，头像和整图更清晰（安卓有开关）。
+- 新增[小白使用教程](https://github.com/sincalaway/ptoart/blob/refactor/ptoart-20261023/docs/QUICKSTART.md)；Windows 包内附拖拽即用的 `.bat`。
 - 所有模型直接附在 Release 中，无需再去网盘或自行转换。
 
 `SHA256SUMS-all.txt` 可用于校验下载文件。
