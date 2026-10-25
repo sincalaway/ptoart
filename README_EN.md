@@ -4,7 +4,7 @@ A maintainable refactor of [photo2cartoon](https://github.com/minivision-ai/phot
 
 [Complete Chinese tutorial](README.md) · [Windows package guide (Chinese)](packaging/WINDOWS-README.md) · [Model setup](docs/MODELS.md) · [Model downloads (Release)](https://github.com/sincalaway/ptoart/releases/latest)
 
-> Version 0.3.3. All models are downloadable from the [Release](https://github.com/sincalaway/ptoart/releases/latest); the Windows EXE opens a GUI and the Android app works after importing models.
+> Version 0.3.4. All models are downloadable from the [Release](https://github.com/sincalaway/ptoart/releases/latest); the Windows EXE opens a GUI and the Android app works after importing models.
 
 ## Windows portable quick start
 

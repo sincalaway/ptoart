@@ -8,6 +8,10 @@ import face_alignment
 # input area: a 20 MP phone photo needs >5 GB. Detect on a downscaled copy and
 # map the boxes back, then find landmarks on the full-resolution image.
 DETECT_MAX_SIDE = 1280
+# SFD reports many weak boxes on foliage and ground texture; keep only confident faces.
+MIN_FACE_SCORE = 0.9
+# In whole-photo mode ignore faces much smaller than the largest one (background noise).
+MIN_RELATIVE_FACE = 0.3
 
 
 class FaceDetect:
@@ -20,25 +24,33 @@ class FaceDetect:
         self.fa = face_alignment.FaceAlignment(two_d, device=device, face_detector=detector)
 
     def _landmarks(self, image):
-        """Return face_alignment landmark predictions with bounded detector memory."""
+        """Return landmark predictions for confidently detected faces.
+
+        Detection runs on a copy whose long side is at most DETECT_MAX_SIDE, so memory
+        stays bounded; low-confidence boxes (trees, textures) are dropped; landmarks
+        are then located on the full-resolution image.
+        """
         height, width = image.shape[:2]
         scale = min(1.0, DETECT_MAX_SIDE / max(height, width))
-        if scale >= 1.0:
-            return self.fa.get_landmarks(image)
-        small = cv2.resize(image, (max(1, round(width * scale)), max(1, round(height * scale))),
-                           interpolation=cv2.INTER_AREA)
+        small = image if scale >= 1.0 else cv2.resize(
+            image, (max(1, round(width * scale)), max(1, round(height * scale))),
+            interpolation=cv2.INTER_AREA)
         detector = getattr(self.fa, 'face_detector', None)
-        if detector is not None and hasattr(detector, 'detect_from_image'):
-            boxes = detector.detect_from_image(small.copy())
-            if boxes is None or len(boxes) == 0:
-                return None
-            boxes = [np.concatenate([np.asarray(b[:4], dtype=np.float32) / scale,
-                                     np.asarray(b[4:], dtype=np.float32)]) for b in boxes]
-            return self.fa.get_landmarks(image, detected_faces=boxes)
-        preds = self.fa.get_landmarks(small)
-        if not preds:
-            return preds
-        return [np.asarray(pred, dtype=np.float32) / scale for pred in preds]
+        if detector is None or not hasattr(detector, 'detect_from_image'):
+            preds = self.fa.get_landmarks(small)
+            if not preds or scale >= 1.0:
+                return preds
+            return [np.asarray(pred, dtype=np.float64) / scale for pred in preds]
+        boxes = detector.detect_from_image(small.copy())
+        kept = []
+        for box in boxes if boxes is not None else []:
+            box = np.asarray(box, dtype=np.float64)  # float32 breaks face_alignment's torch transform
+            if box.shape[0] >= 5 and box[4] < MIN_FACE_SCORE:
+                continue
+            kept.append(np.concatenate([box[:4] / scale, box[4:]]))
+        if not kept:
+            return None
+        return self.fa.get_landmarks(image, detected_faces=kept)
 
     def align(self, image):
         landmarks = self.__get_max_face_landmarks(image)
@@ -66,6 +78,9 @@ class FaceDetect:
                 continue
             faces.append((width * np.ptp(pred[:, 1]), pred))
         faces.sort(key=lambda item: item[0], reverse=True)
+        if faces:
+            largest = np.ptp(faces[0][1][:, 0])
+            faces = [f for f in faces if np.ptp(f[1][:, 0]) >= MIN_RELATIVE_FACE * largest]
         return [self.__rotate(image, pred, return_matrix=True) for _, pred in faces[:max_faces]]
 
     def __get_max_face_landmarks(self, image):

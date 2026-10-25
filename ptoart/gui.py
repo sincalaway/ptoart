@@ -194,7 +194,7 @@ def run_gui(screenshot=None):
             r += 1
             self.mode = ctk.CTkSegmentedButton(side, values=list(MODES.values()), font=font(13),
                                                selected_color=ACCENT, selected_hover_color=ACCENT_HOVER,
-                                               command=lambda _v: self._ui_update_options())
+                                               command=lambda _v: self._ui_mode_changed())
             self.mode.grid(row=r, column=0, padx=24, pady=(4, 6), sticky="ew")
             r += 1
             self.mode_hint = ctk.CTkLabel(side, text="", font=font(12), text_color=MUTED, wraplength=270,
@@ -312,6 +312,14 @@ def run_gui(screenshot=None):
         def _ui_mode_key(self):
             return next(k for k, v in MODES.items() if v == self.mode.get())
 
+        def _ui_mode_changed(self):
+            # A result from another mode must not stay on screen under the new mode.
+            if getattr(self, "result", None) is not None and not self.working:
+                self.result = None
+                self._ui_show(self.after_panel, None, "")
+                self.save_btn.configure(state="disabled")
+            self._ui_update_options()
+
         def _ui_update_options(self):
             for w in self.opts.winfo_children():
                 w.grid_forget()
@@ -367,7 +375,7 @@ def run_gui(screenshot=None):
                 self.upscale.configure(state="disabled")
             ok, no = "✓", "✗"
             self.model_status.configure(text=(
-                f"模型  {ok if m.face else no} 卡通头像   {ok if m.styles else no} 风格 {len(m.styles)} 种   "
+                f"模型  {ok if m.face else no} 头像/整张照片   {ok if m.styles else no} 风格 {len(m.styles)} 种   "
                 f"{ok if m.upscalers else no} 超分"))
             self._ui_update_options()
 
