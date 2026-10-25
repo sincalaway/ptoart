@@ -47,7 +47,8 @@ class MainActivity : AppCompatActivity() {
     private val styleNames = mapOf(
         "hayao" to "宫崎骏", "shinkai" to "新海诚", "paprika" to "今敏 Paprika",
         "celeba_distill" to "CelebA 蒸馏", "face_paint_512_v1" to "Face Paint v1",
-        "face_paint_512_v2" to "Face Paint v2",
+        "face_paint_512_v2" to "Face Paint v2", "hayao_v3" to "宫崎骏 v3", "shinkai_v3" to "新海诚 v3",
+        "ghibli_face" to "吉卜力人像", "jp_face" to "日漫二次元", "portrait_sketch" to "黑白素描",
     )
 
     private val pickModel = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
@@ -141,10 +142,13 @@ class MainActivity : AppCompatActivity() {
             val previous = currentMode?.label
             modes = buildList {
                 // AnimeGANv2 face painter keeps faces natural (better on children); listed first.
-                val painter = File(styleDir, "face_paint_512_v2.onnx")
-                if (painter.isFile) {
-                    add(Mode.Face("卡通头像 · 动漫脸（推荐）", painter))
-                    add(Mode.Photo("整张照片 · 动漫脸（推荐）", painter))
+                val looks = listOf("face_paint_512_v2" to "动漫脸（推荐）", "jp_face" to "日漫二次元",
+                    "ghibli_face" to "吉卜力人像", "portrait_sketch" to "黑白素描")
+                for ((stem, look) in looks) {
+                    val painter = File(styleDir, "$stem.onnx")
+                    if (!painter.isFile) continue
+                    add(Mode.Face("卡通头像 · $look", painter))
+                    add(Mode.Photo("整张照片 · $look", painter))
                 }
                 if (modelFile.isFile) {
                     add(Mode.Face("卡通头像 · 经典卡通", modelFile))

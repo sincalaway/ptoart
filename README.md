@@ -4,7 +4,7 @@
 
 **第一次用？看 [小白使用教程](docs/QUICKSTART.md)** · [English](README_EN.md) · [Windows 便携版说明](packaging/WINDOWS-README.md) · [模型准备](docs/MODELS.md) · [模型下载（Release）](https://github.com/sincalaway/ptoart/releases/latest)
 
-> 当前版本 0.3.5。Windows 双击即开图形界面，安卓 App 导入模型即可用；所有模型都在 [Release](https://github.com/sincalaway/ptoart/releases/latest) 中下载。
+> 当前版本 0.3.6。Windows 双击即开图形界面，安卓 App 导入模型即可用；所有模型都在 [Release](https://github.com/sincalaway/ptoart/releases/latest) 中下载。
 
 ## 先了解能做什么
 
@@ -18,7 +18,7 @@
 
 整图风格可选：`hayao`（宫崎骏）、`shinkai`（新海诚）、`paprika`（今敏）、`celeba_distill`、`face_paint_512_v1`、`face_paint_512_v2`。运行 `python tools/export_styles.py -o weights/styles` 会自动下载并转换全部风格（每个约 8.7 MB）。**AnimeGANv2 权重仅限非商业用途。**
 
-头像和整张照片模式可加 `--style face_paint_512_v2` 改用「动漫脸」画风（GUI 默认推荐）：五官自然、不易变形，对儿童和老人效果明显更好，512 分辨率推理；该权重同样仅限非商业用途。经典卡通生成器只在 256×256 推理。更大的 `--size` 默认用 Lanczos + 轻度锐化放大；加 `--upscale anime` 则用 Real-ESRGAN 超分，能补出清晰线条。透明边缘和强度混合始终使用原分辨率。重构未消除上游训练数据的人群偏差。
+头像和整张照片模式可加 `--style face_paint_512_v2`（或 `jp_face`、`ghibli_face`、`portrait_sketch`） 改用「动漫脸」画风（GUI 默认推荐）：五官自然、不易变形，对儿童和老人效果明显更好，512 分辨率推理；该权重同样仅限非商业用途。经典卡通生成器只在 256×256 推理。更大的 `--size` 默认用 Lanczos + 轻度锐化放大；加 `--upscale anime` 则用 Real-ESRGAN 超分，能补出清晰线条。透明边缘和强度混合始终使用原分辨率。重构未消除上游训练数据的人群偏差。
 
 | 你想怎么用 | 从哪里开始 |
 | --- | --- |
@@ -36,7 +36,7 @@
 | `ptoart_weights.pt` | 约 144 MB | 卡通头像生成器（Torch，Windows 默认后端） | `weights\` | 不需要 |
 | `seg_model_384.pb` | 约 32 MB | 人像分割（Windows 头像/整张照片模式必需） | `weights\` | 不需要（用内置 ML Kit） |
 | `ptoart_weights.onnx` | 约 18 MB | 卡通头像生成器（ONNX，安卓必需；Windows 加 `--backend onnx` 时用） | `weights\`（可选） | 导入 |
-| `ptoart-styles-animeganv2.zip` | 约 50 MB | 6 种整图风格：宫崎骏、新海诚、Paprika、CelebA 蒸馏、Face Paint v1/v2 | 解压到 `weights\styles\` | 解压后导入想要的 |
+| `ptoart-styles.zip` | 约 50 MB | 6 种整图风格：宫崎骏、新海诚、Paprika、CelebA 蒸馏、Face Paint v1/v2 | 解压到 `weights\styles\` | 解压后导入想要的 |
 | `ptoart-upscalers-realesrgan.zip` | 约 7 MB | 超分辨率放大：`anime`（卡通，快）、`general`（通用） | 解压到 `weights\upscale\` | 导入一个（推荐 anime） |
 
 目录示例：
@@ -61,7 +61,7 @@ C:\ptoart\
 
 1. 在 [Releases](https://github.com/sincalaway/ptoart/releases) 下载 `ptoart-android.apk` 安装（Android 7.0+，需允许安装未知来源应用；APK 为调试签名）。
 2. 在同一 Release 下载 **`ptoart_weights.onnx`** 存到手机，在 App 中点「导入模型」选中它（模型不随 App 分发）。
-3. 想要整图风格或更清晰的头像，把 `ptoart-styles-animeganv2.zip`、`ptoart-upscalers-realesrgan.zip` 解压后，在「导入模型」里多选导入（App 自动识别模型类型）。导入超分模型后会出现「超分辨率增强」开关。
+3. 想要整图风格或更清晰的头像，把 `ptoart-styles.zip`、`ptoart-upscalers-realesrgan.zip` 解压后，在「导入模型」里多选导入（App 自动识别模型类型）。导入超分模型后会出现「超分辨率增强」开关。
 4. 选照片，在下拉框选模式：「卡通头像」（512×512，可透明背景）、「整张照片」（所有人脸卡通化贴回原图）或「整图风格：宫崎骏/新海诚/…」，调强度后转换并保存 PNG。
 
 安卓版全程离线：人脸检测与人像分割使用打包进 APK 的 Google ML Kit 模型，卡通生成使用 ONNX Runtime。裁剪与对齐策略与桌面版近似但不完全一致，效果可能略有差异。

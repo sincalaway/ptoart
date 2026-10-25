@@ -37,9 +37,17 @@ jobs:
           unzip -j resources.zip '*/photo2cartoon_weights.pt' '*/seg_model_384.pb' -d models-out
           mv models-out/photo2cartoon_weights.pt models-out/ptoart_weights.pt  # upstream file name
           python tools/export_onnx.py models-out/ptoart_weights.pt models-out/ptoart_weights.onnx
-      - name: AnimeGANv2 styles (non-commercial)
+      - name: AnimeGANv2 + AnimeGANv3 styles (non-commercial)
         run: |
           python tools/export_styles.py -o styles
+          python tools/export_styles_v3.py -o styles
+          cat > styles/LICENSE-AnimeGANv3.txt <<'TXT'
+          AnimeGANv3 weights (hayao_v3, shinkai_v3, ghibli_face, portrait_sketch:
+          https://github.com/TachibanaYoshino/AnimeGANv3 and AnimeGANv3_Portrait_Inference;
+          jp_face: https://huggingface.co/vumichien/AnimeGANv3_JP_face).
+          AnimeGANv3 is made freely available for NON-COMMERCIAL purposes only. Rewrapped to NCHW
+          by tools/export_styles_v3.py.
+          TXT
           cat > styles/LICENSE-AnimeGANv2.txt <<'TXT'
           AnimeGANv2 style weights (hayao, shinkai: https://github.com/TachibanaYoshino/AnimeGANv2;
           paprika, celeba_distill, face_paint_512_v1/v2: https://github.com/bryandlee/animegan2-pytorch).
@@ -48,7 +56,7 @@ jobs:
           Converted to ONNX by tools/export_styles.py. Put these files in weights/styles (Windows)
           or import them in the Android app.
           TXT
-          (cd styles && zip -9 ../models-out/ptoart-styles-animeganv2.zip *.onnx LICENSE-AnimeGANv2.txt)
+          (cd styles && zip -9 ../models-out/ptoart-styles.zip *.onnx LICENSE-AnimeGANv*.txt)
       - name: Real-ESRGAN upscalers (BSD-3)
         run: |
           python tools/export_upscalers.py -o upscale
@@ -93,7 +101,7 @@ jobs:
             dist/ptoart_weights.pt
             dist/ptoart_weights.onnx
             dist/seg_model_384.pb
-            dist/ptoart-styles-animeganv2.zip
+            dist/ptoart-styles.zip
             dist/ptoart-upscalers-realesrgan.zip
             dist/SHA256SUMS-all.txt
           fail_on_unmatched_files: true

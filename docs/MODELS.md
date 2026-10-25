@@ -38,6 +38,7 @@ python tools/export_onnx.py ptoart_weights.pt ptoart_weights.onnx
 pip install "torch>=2.5" onnx onnxscript onnxruntime tensorflow   # tensorflow 仅 hayao/shinkai 需要
 python tools/export_styles.py -o weights/styles          # 全部风格
 python tools/export_styles.py hayao paprika -o weights/styles
+python tools/export_styles_v3.py -o weights/styles                 # AnimeGANv3：hayao_v3、shinkai_v3、ghibli_face、jp_face、portrait_sketch（非商业）
 ```
 
 | 风格 | 来源 |

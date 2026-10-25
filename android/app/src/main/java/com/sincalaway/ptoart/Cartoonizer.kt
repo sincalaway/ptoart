@@ -101,8 +101,8 @@ class StyleModel(modelFile: File) : Closeable {
 
     fun stylize(photo: Bitmap, strength: Float, maxSide: Int = 1024): Bitmap {
         val scale = min(1f, maxSide.toFloat() / max(photo.width, photo.height))
-        val w = max(4, (photo.width * scale / 4).roundToInt() * 4)
-        val h = max(4, (photo.height * scale / 4).roundToInt() * 4)
+        val w = max(8, (photo.width * scale / 8).roundToInt() * 8)
+        val h = max(8, (photo.height * scale / 8).roundToInt() * 8)
         val small = Bitmap.createScaledBitmap(photo, w, h, true)
         val plane = w * h
         val px = IntArray(plane).also { small.getPixels(it, 0, w, 0, 0, w, h) }

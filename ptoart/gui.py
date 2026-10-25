@@ -19,11 +19,22 @@ STYLE_NAMES = {
     "celeba_distill": "CelebA 清新",
     "face_paint_512_v1": "人像油彩 v1",
     "face_paint_512_v2": "人像油彩 v2",
+    "hayao_v3": "宫崎骏 v3",
+    "shinkai_v3": "新海诚 v3",
+    "ghibli_face": "吉卜力人像",
+    "jp_face": "日漫二次元",
+    "portrait_sketch": "黑白素描",
 }
 UPSCALE_NAMES = {"anime": "动漫（快）", "general": "通用（细节多）"}
 MODES = {"face": "卡通头像", "photo": "整张照片", "style": "动漫风格"}
 # Face looks for avatar/whole-photo modes: key -> (label, style model or None for the ptoart generator).
-FACE_LOOKS = {"paint": ("动漫脸（推荐）", "face_paint_512_v2"), "classic": ("经典卡通", None)}
+FACE_LOOKS = {
+    "paint": ("动漫脸（推荐）", "face_paint_512_v2"),
+    "jp": ("日漫二次元", "jp_face"),
+    "ghibli": ("吉卜力人像", "ghibli_face"),
+    "sketch": ("黑白素描", "portrait_sketch"),
+    "classic": ("经典卡通", None),
+}
 IMAGE_TYPES = (("图片", "*.jpg *.jpeg *.png *.bmp *.webp"), ("所有文件", "*.*"))
 
 
@@ -39,10 +50,9 @@ class Models:
     def looks(self):
         """Face looks usable now, recommended first."""
         out = []
-        if self.seg and "face_paint_512_v2" in self.styles:
-            out.append("paint")
-        if self.face:
-            out.append("classic")
+        for key, (_label, style) in FACE_LOOKS.items():
+            if (style is None and self.face) or (style is not None and self.seg and style in self.styles):
+                out.append(key)
         return out
 
     @property
@@ -235,9 +245,9 @@ def run_gui(screenshot=None):
                                           progress_color=ACCENT, command=self._ui_strength_changed)
             self.strength.set(100)
             self.look_label = ctk.CTkLabel(self.opts, text="画风", font=font(12), text_color=MUTED)
-            self.look_menu = ctk.CTkSegmentedButton(self.opts, values=[v[0] for v in FACE_LOOKS.values()],
-                                                    font=font(13), selected_color=ACCENT,
-                                                    selected_hover_color=ACCENT_HOVER)
+            self.look_menu = ctk.CTkOptionMenu(self.opts, values=["—"], font=font(13), height=34,
+                                               fg_color=ACCENT, button_color=ACCENT_HOVER,
+                                               button_hover_color=ACCENT_HOVER, dropdown_font=font(13))
             self.transparent = ctk.CTkSwitch(self.opts, text="透明背景（PNG）", font=font(13),
                                              progress_color=ACCENT)
 
@@ -399,8 +409,10 @@ def run_gui(screenshot=None):
                 self.upscale.deselect()
                 self.upscale.configure(state="disabled")
             looks = m.looks
-            if looks and self.look_menu.get() not in [FACE_LOOKS[k][0] for k in looks]:
-                self.look_menu.set(FACE_LOOKS[looks[0]][0])
+            labels = [FACE_LOOKS[k][0] for k in looks] or ["—"]
+            self.look_menu.configure(values=labels)
+            if self.look_menu.get() not in labels:
+                self.look_menu.set(labels[0])
             ok, no = "✓", "✗"
             self.model_status.configure(text=(
                 f"模型  {ok if looks else no} 头像/整张照片   {ok if m.styles else no} 风格 {len(m.styles)} 种   "

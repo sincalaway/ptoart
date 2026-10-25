@@ -198,9 +198,9 @@ class ArtPipeline:
         """Stylize the whole photo; the result has the input's size."""
         height, width = image.shape[:2]
         scale = min(1.0, self.config.style_max_side / max(height, width))
-        # The generator downsamples twice; keep sides multiples of 4.
-        h = max(4, int(round(height * scale / 4)) * 4)
-        w = max(4, int(round(width * scale / 4)) * 4)
+        # AnimeGANv3 downsamples three times; keep sides multiples of 8.
+        h = max(8, int(round(height * scale / 8)) * 8)
+        w = max(8, int(round(width * scale / 8)) * 8)
         small = cv2.resize(image, (w, h), interpolation=cv2.INTER_AREA)
         tensor = np.ascontiguousarray(
             (small.astype(np.float32) / 127.5 - 1).transpose(2, 0, 1)[None])
