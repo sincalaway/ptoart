@@ -8,7 +8,17 @@
 
 ## 先了解能做什么
 
-默认输出 **256×256 的人脸裁剪头像**，不是整张照片的高清卡通化。多张脸沿用上游的最大脸选择策略；建议先用清晰、正面、单人的照片尝试。重构保留原生成器和训练算法，不会自动增加新绘画风格，也未消除上游训练数据的人群偏差。
+三种输出模式（`--output`）：
+
+| 模式 | 效果 | 需要的模型 |
+| --- | --- | --- |
+| `face`（默认） | 最大一张脸的方形卡通头像，`--size` 可设 64–2048（默认 256） | `photo2cartoon_weights.pt/.onnx` + `seg_model_384.pb` |
+| `photo` | 整张照片保持原尺寸，所有人脸（`--max-faces`，默认 10）卡通化后羽化贴回原图；身体和背景保持写实 | 同上 |
+| `style` | AnimeGANv2 整图风格化（风景、全身照都可），`--style` 选择风格 | `weights/styles/<风格>.onnx` |
+
+整图风格可选：`hayao`（宫崎骏）、`shinkai`（新海诚）、`paprika`（今敏）、`celeba_distill`、`face_paint_512_v1`、`face_paint_512_v2`。运行 `python tools/export_styles.py -o weights/styles` 会自动下载并转换全部风格（每个约 8.7 MB）。**AnimeGANv2 权重仅限非商业用途。**
+
+photo2cartoon 生成器只在 256×256 推理，更大的 `--size` 是高质量放大（Lanczos + 轻度锐化，透明边缘和强度混合使用原分辨率），不是生成更多细节。重构未消除上游训练数据的人群偏差。
 
 | 你想怎么用 | 从哪里开始 |
 | --- | --- |
@@ -21,7 +31,8 @@
 
 1. 在 [Releases](https://github.com/sincalaway/ptoart/releases) 下载 `ptoart-android.apk` 安装（Android 7.0+，需允许安装未知来源应用；APK 为调试签名）。
 2. 从[光鸭云盘模型分享](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)下载 **`photo2cartoon_weights.onnx`**（也可用 `python tools/export_onnx.py photo2cartoon_weights.pt` 自行由 Torch 权重转换），把它保存到手机，在 App 中点「导入模型」选中它（模型不随 App 分发）。
-3. 点「选择人像照片」，可调卡通强度、透明背景，结果为 256×256 头像，可「保存到相册」（Pictures/ptoart）。也可以在相册里把照片“分享”到本 App。
+3. 想要整图风格，再导入 `hayao.onnx` 等风格模型（可多选，App 自动识别模型类型；用 `tools/export_styles.py` 生成）。
+4. 选照片，在下拉框选模式：「卡通头像」（512×512，可透明背景）、「整张照片」（所有人脸卡通化贴回原图）或「整图风格：宫崎骏/新海诚/…」，调强度后转换并保存 PNG。
 
 安卓版全程离线：人脸检测与人像分割使用打包进 APK 的 Google ML Kit 模型，卡通生成使用 ONNX Runtime。裁剪与对齐策略与桌面版近似但不完全一致，效果可能略有差异。
 
@@ -96,6 +107,19 @@ cd "C:\ptoart"
 ```
 
 `--strength` 范围为 0–1，默认 1；它只是像素混合，不是模型风格控制。默认白色背景，透明度来自分割掩码，发丝边缘质量仍取决于分割模型。输入与输出不得是同一路径，即使加 `--overwrite` 也不能覆盖原照片。
+
+### 4b. 整张照片、高清头像与整图风格
+
+```powershell
+# 1024×1024 高清头像
+.\ptoart.exe convert .\portrait.jpg .\output\avatar-1024.png --size 1024 --model-dir .\weights --device cpu
+# 整张照片：所有人脸卡通化并贴回原图，原尺寸输出
+.\ptoart.exe convert .\group.jpg .\output\group.jpg --output photo --model-dir .\weights --device cpu
+# 整图风格（模型放在 weights\styles\hayao.onnx）
+.\ptoart.exe convert .\street.jpg .\output\street-hayao.jpg --style hayao --model-dir .\weights
+```
+
+整图风格只依赖 ONNX Runtime，不需要人脸模型；`--style-max-side`（默认 1536）控制推理分辨率，越大越清晰也越慢。
 
 ### 5. 批量处理文件夹
 

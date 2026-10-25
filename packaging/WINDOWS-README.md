@@ -83,6 +83,16 @@ cd "C:\ptoart"
 
 ## 6. 可选模式
 
+高清头像 / 整张照片 / 整图风格：
+
+```powershell
+.\ptoart.exe convert .\portrait.jpg .\output\avatar-1024.png --size 1024 --model-dir .\weights --device cpu
+.\ptoart.exe convert .\group.jpg .\output\group.jpg --output photo --model-dir .\weights --device cpu
+.\ptoart.exe convert .\street.jpg .\output\street-hayao.jpg --style hayao --model-dir .\weights
+```
+
+`--output photo` 把每张人脸卡通化后贴回原图（`--max-faces` 默认 10）。`--style` 需要把风格模型放到 `weights\styles\`：hayao（宫崎骏）、shinkai（新海诚）、paprika、celeba_distill、face_paint_512_v1、face_paint_512_v2，Release 中的 `ptoart-styles-animeganv2.zip` 已包含全部风格（仅限非商业用途）。
+
 ONNX：准备 `photo2cartoon_weights.onnx`，检查与转换都加 `--backend onnx`。普通照片仍需要 `seg_model_384.pb` 及人脸预处理：
 
 ```powershell

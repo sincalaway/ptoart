@@ -11,6 +11,8 @@
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/import_model"/>
+        <Spinner android:id="@+id/mode" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="8dp"/>
         <ImageView android:id="@+id/image" android:layout_width="match_parent"
             android:layout_height="320dp" android:layout_marginTop="12dp"
             android:adjustViewBounds="true" android:scaleType="fitCenter"

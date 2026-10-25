@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag to create (e.g. v0.2.0)'
+        description: 'Release tag to create (e.g. v0.3.0)'
         required: true
-        default: 'v0.2.0'
+        default: 'v0.3.0'
 
 permissions:
   contents: write
@@ -18,8 +18,36 @@ jobs:
     uses: ./.github/workflows/windows-exe.yml
   android:
     uses: ./.github/workflows/android-apk.yml
+  styles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Export AnimeGANv2 styles to ONNX
+        run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install tensorflow-cpu onnx onnxscript onnxruntime numpy
+          python tools/export_styles.py -o styles
+          cat > styles/LICENSE-AnimeGANv2.txt <<'TXT'
+          AnimeGANv2 style weights (hayao, shinkai: https://github.com/TachibanaYoshino/AnimeGANv2;
+          paprika, celeba_distill, face_paint_512_v1/v2: https://github.com/bryandlee/animegan2-pytorch).
+          AnimeGANv2 is made freely available for NON-COMMERCIAL purposes only. For commercial use,
+          contact the AnimeGANv2 author for an authorization letter.
+          Converted to ONNX by tools/export_styles.py. Put these files in weights/styles (Windows)
+          or import them in the Android app.
+          TXT
+          cd styles && zip -9 ../ptoart-styles-animeganv2.zip *.onnx LICENSE-AnimeGANv2.txt
+          cd .. && sha256sum ptoart-styles-animeganv2.zip > SHA256SUMS-styles.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ptoart-styles
+          path: |
+            ptoart-styles-animeganv2.zip
+            SHA256SUMS-styles.txt
   publish:
-    needs: [windows, android]
+    needs: [windows, android, styles]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,5 +70,6 @@ jobs:
           files: |
             dist/ptoart-windows-x64-cpu.zip
             dist/ptoart-android.apk
+            dist/ptoart-styles-animeganv2.zip
             dist/SHA256SUMS-all.txt
           fail_on_unmatched_files: true

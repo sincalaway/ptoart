@@ -34,7 +34,9 @@ Artifacts are retained for 30 days. A known successful historical build is [run 
 ## Options and troubleshooting
 
 - `doctor` checks module/file presence only, not model loading, validity, CUDA or inference quality. `ready: true` returns 0; missing items return 2.
-- Default output is a **256×256 cropped portrait**, not a full-image cartoon or an HD result. Multiple faces use the upstream largest-face policy.
+- `--output face` (default) returns the largest face as a square avatar; `--size` (64–2048, default 256) upscales the 256px generator output with Lanczos + light sharpening while alpha and strength blending use the full-resolution crop.
+- `--output photo` keeps the original photo size and blends every detected face (`--max-faces`, default 10) back in place with feathered edges; bodies and backgrounds stay photographic.
+- `--style NAME` (implies `--output style`) applies an AnimeGANv2 whole-image style from `<model-dir>/styles/NAME.onnx`: `hayao`, `shinkai`, `paprika`, `celeba_distill`, `face_paint_512_v1`, `face_paint_512_v2`. Create them with `python tools/export_styles.py -o weights/styles`. AnimeGANv2 weights are for **non-commercial use only**. `--style-max-side` (default 1536) sets the inference resolution.
 - `--background transparent` requires PNG, WebP or TIFF output. Default background is white. Segmentation quality determines alpha edges.
 - `--strength 0.7` blends 70% model output with 30% original cropped portrait; it is not learned style control. Range: 0–1, default 1.
 - `--backend onnx` requires `photo2cartoon_weights.onnx`. Normal-photo preprocessing still needs segmentation, face-alignment/Torch and TensorFlow; this is not an ONNX-only pipeline.

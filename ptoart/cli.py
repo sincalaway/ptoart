@@ -34,15 +34,35 @@ def add_options(parser):
     parser.add_argument("--background", type=parse_background, default=(255, 255, 255), metavar="RRGGBB|transparent")
     parser.add_argument("--strength", type=float, default=1.0)
     parser.add_argument("--max-pixels", type=int, default=25_000_000)
+    parser.add_argument("--output", choices=["face", "photo", "style"], default=None,
+                        help="face: square cartoon avatar; photo: whole photo with cartoon faces "
+                             "pasted back; style: whole-image AnimeGANv2 style (default: face, "
+                             "or style when --style is given)")
+    parser.add_argument("--style", help="Style name in <model-dir>/styles (hayao, shinkai, paprika, "
+                                        "celeba_distill, face_paint_512_v1, face_paint_512_v2) or a .onnx path")
+    parser.add_argument("--style-max-side", type=int, default=1536,
+                        help="Longest side used for style inference; larger is sharper but slower")
+    parser.add_argument("--size", type=int, default=256, help="Avatar size in pixels for --output face (64-2048)")
+    parser.add_argument("--max-faces", type=int, default=10, help="Faces to convert for --output photo")
 
 
 def config_from(args):
     keys = ("backend", "device", "model_dir", "weights", "segmentation", "aligned",
-            "detector", "background", "strength", "max_pixels")
-    return ArtConfig(**{key: getattr(args, key) for key in keys})
+            "detector", "background", "strength", "max_pixels", "output", "size", "max_faces",
+            "style", "style_max_side")
+    values = {key: getattr(args, key) for key in keys}
+    if values["output"] is None:
+        values["output"] = "style" if values["style"] else "face"
+    return ArtConfig(**values)
 
 
 def doctor(config):
+    if config.output == "style":
+        dependencies = {p: importlib.util.find_spec(p) is not None for p in ("numpy", "cv2", "PIL", "onnxruntime")}
+        models = {str(config.style): config.style.is_file()}
+        return {"version": __version__, "output": "style", "dependencies": dependencies, "models": models,
+                "ready": all(dependencies.values()) and all(models.values()),
+                "note": "Presence checks only; not a model-load or inference validation."}
     packages = ["numpy", "cv2", "PIL", "torch" if config.backend == "torch" else "onnxruntime"]
     if not config.aligned:
         packages += ["face_alignment", "tensorflow"]
@@ -129,12 +149,12 @@ def main(argv=None):
             suffix = args.destination.suffix.lower()
             if suffix not in SUPPORTED:
                 raise ValueError(f"Unsupported output extension: {suffix}")
-            if config.background is None and suffix not in {".png", ".webp", ".tif", ".tiff"}:
+            if config.background is None and config.output == "face" and suffix not in {".png", ".webp", ".tif", ".tiff"}:
                 raise ValueError("Transparent output requires PNG, WebP or TIFF")
             image = read_image(args.source, config.max_pixels)
             if min(image.shape[:2]) < 2:
                 raise ValueError("Input image must be at least 2 by 2 pixels")
-            if config.aligned and image.shape[0] != image.shape[1]:
+            if config.output == "face" and config.aligned and image.shape[0] != image.shape[1]:
                 raise ValueError("--aligned requires a square, pre-aligned portrait")
         else:
             collect_batch_inputs(args.source, args.destination, recursive=args.recursive)

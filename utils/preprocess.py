@@ -1,4 +1,10 @@
+from collections import namedtuple
+
 import numpy as np
+
+# ``rgba`` is the aligned square crop at native resolution; ``matrix`` is the
+# 2x3 affine transform mapping original-photo pixels to crop pixels.
+FaceRegion = namedtuple('FaceRegion', ['rgba', 'matrix'])
 
 
 class Preprocess:
@@ -28,9 +34,21 @@ class Preprocess:
             return None
         image_align, landmarks_align = face_info
 
-        face = self.__crop(image_align, landmarks_align)
+        face, _, _ = self.__crop(image_align, landmarks_align)
         mask = self.segment.get_mask(face)
         return np.dstack((face, mask))
+
+    def process_all(self, image, max_faces=10):
+        """Return a FaceRegion for every detected face, largest first."""
+        regions = []
+        for image_align, landmarks_align, matrix in self.detect.align_all(image, max_faces=max_faces):
+            face, left, top = self.__crop(image_align, landmarks_align)
+            mask = self.segment.get_mask(face)
+            to_crop = np.asarray(matrix, dtype=np.float64).copy()
+            to_crop[0, 2] -= left
+            to_crop[1, 2] -= top
+            regions.append(FaceRegion(np.dstack((face, mask)), to_crop))
+        return regions
 
     @staticmethod
     def __crop(image, landmarks):
@@ -52,6 +70,7 @@ class Preprocess:
             top -= ((right - left) - (bottom - top)) // 2
             bottom = top + (right - left)
 
+        crop_left, crop_top = left, top
         image_crop = np.ones((bottom - top + 1, right - left + 1, 3), np.uint8) * 255
 
         h, w = image.shape[:2]
@@ -65,4 +84,4 @@ class Preprocess:
         bottom_white = top_white + (bottom - top)
 
         image_crop[top_white:bottom_white+1, left_white:right_white+1] = image[top:bottom+1, left:right+1].copy()
-        return image_crop
+        return image_crop, crop_left, crop_top

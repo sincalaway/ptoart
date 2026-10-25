@@ -13,8 +13,8 @@ android {
         applicationId = "com.sincalaway.ptoart"
         minSdk = 24
         targetSdk = 34
-        versionCode = (System.getenv("PTOART_VERSION_CODE") ?: "2").toInt()
-        versionName = System.getenv("PTOART_VERSION_NAME") ?: "0.2.0"
+        versionCode = (System.getenv("PTOART_VERSION_CODE") ?: "3").toInt()
+        versionName = System.getenv("PTOART_VERSION_NAME") ?: "0.3.0"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
     }
 

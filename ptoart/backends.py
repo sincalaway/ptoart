@@ -78,6 +78,32 @@ class OnnxBackend:
         self.session = None
 
 
+class StyleBackend:
+    """Whole-image AnimeGANv2-style ONNX generator: NCHW [-1,1] in and out, any size."""
+
+    def __init__(self, model_path):
+        require_file(model_path)
+        try:
+            import onnxruntime as ort
+        except ImportError as exc:
+            raise ModelError("Style output requires: pip install 'ptoart[onnx]'") from exc
+        try:
+            self.session = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
+            inputs = self.session.get_inputs()
+            if len(inputs) != 1 or len(inputs[0].shape) != 4 or inputs[0].shape[1] not in (3, "3"):
+                raise ValueError(f"Expected one NCHW RGB input, got {inputs[0].shape}")
+            self.input_name = inputs[0].name
+            self.output_name = self.session.get_outputs()[0].name
+        except Exception as exc:
+            raise ModelError(f"Unable to load style model {model_path}: {exc}") from exc
+
+    def run(self, image):
+        return self.session.run([self.output_name], {self.input_name: image})[0]
+
+    def close(self):
+        self.session = None
+
+
 def create_backend(config):
     return {"torch": TorchBackend, "onnx": OnnxBackend}[config.backend](config)
 

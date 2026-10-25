@@ -32,6 +32,21 @@ python tools/export_onnx.py photo2cartoon_weights.pt photo2cartoon_weights.onnx
 
 脚本只导出 `genA2B` 生成器（输入 `input`、输出 `output`，均为 `[1,3,256,256]`），并用 ONNX Runtime 与 Torch 结果做数值比对后打印误差。
 
+## 整图风格模型（AnimeGANv2）
+
+```bash
+pip install "torch>=2.5" onnx onnxscript onnxruntime tensorflow   # tensorflow 仅 hayao/shinkai 需要
+python tools/export_styles.py -o weights/styles          # 全部风格
+python tools/export_styles.py hayao paprika -o weights/styles
+```
+
+| 风格 | 来源 |
+| --- | --- |
+| `hayao` 宫崎骏、`shinkai` 新海诚 | [AnimeGANv2](https://github.com/TachibanaYoshino/AnimeGANv2) TF checkpoint，脚本直接读取变量转换 |
+| `paprika`、`celeba_distill`、`face_paint_512_v1`、`face_paint_512_v2` | [animegan2-pytorch](https://github.com/bryandlee/animegan2-pytorch)（MIT） |
+
+导出的 ONNX 输入 `input`、输出 `output`，NCHW RGB，取值 [-1,1]，高宽可变（建议 4 的倍数）；脚本会在两种尺寸下与 PyTorch 比对。`face_paint_*` 针对人像训练，对风景效果一般。**AnimeGANv2 权重仅限非商业用途**，商用需联系原作者授权。
+
 ## 安全与完整性
 
 只使用可信来源的模型。新 Torch 后端使用 `torch.load(..., weights_only=True)` 和严格的 state_dict 匹配，不会因装载失败回退到任意 pickle 执行。历史训练代码仍保留旧的权重加载方式；不要用它装载不可信 checkpoint。

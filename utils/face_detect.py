@@ -22,6 +22,25 @@ class FaceDetect:
         else:
             return self.__rotate(image, landmarks)
 
+    def align_all(self, image, max_faces=10, min_size=24):
+        """Align every detected face, largest first.
+
+        Returns a list of ``(rotated_image, rotated_landmarks, matrix)`` where
+        ``matrix`` is the 2x3 affine transform from original to rotated pixels.
+        Faces whose landmark box is narrower than ``min_size`` pixels are skipped.
+        """
+        preds = self.fa.get_landmarks(image)
+        if not preds:
+            return []
+        faces = []
+        for pred in preds:
+            width = np.ptp(pred[:, 0])
+            if width < min_size:
+                continue
+            faces.append((width * np.ptp(pred[:, 1]), pred))
+        faces.sort(key=lambda item: item[0], reverse=True)
+        return [self.__rotate(image, pred, return_matrix=True) for _, pred in faces[:max_faces]]
+
     def __get_max_face_landmarks(self, image):
         preds = self.fa.get_landmarks(image)
         if preds is None or len(preds) == 0:
@@ -43,7 +62,7 @@ class FaceDetect:
             return preds[max_face_index]
 
     @staticmethod
-    def __rotate(image, landmarks):
+    def __rotate(image, landmarks, return_matrix=False):
         # rotation angle
         left_eye_corner = landmarks[36]
         right_eye_corner = landmarks[45]
@@ -72,6 +91,8 @@ class FaceDetect:
 
         landmarks = np.concatenate([landmarks, np.ones((landmarks.shape[0], 1))], axis=1)
         landmarks_rotate = np.dot(M, landmarks.T).T
+        if return_matrix:
+            return image_rotate, landmarks_rotate, M
         return image_rotate, landmarks_rotate
 
 

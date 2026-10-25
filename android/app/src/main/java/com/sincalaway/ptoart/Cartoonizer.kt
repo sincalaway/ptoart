@@ -27,10 +27,77 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-class NoFaceException : Exception("未检测到人脸，请使用清晰的正面单人照片")
+class NoFaceException : Exception("未检测到人脸，请使用清晰的正面照片")
+
+/** Which kind of ONNX file the user imported. */
+enum class ModelKind { PHOTO2CARTOON, STYLE }
+
+object ModelInspector {
+    /** photo2cartoon has a fixed [1,3,256,256] input; AnimeGANv2 styles have dynamic H and W. */
+    fun kindOf(file: File): ModelKind {
+        val env = OrtEnvironment.getEnvironment()
+        env.createSession(file.absolutePath, OrtSession.SessionOptions()).use { s ->
+            require(s.inputNames.size == 1) { "模型应只有一个输入" }
+            val info = s.inputInfo.values.first().info as ai.onnxruntime.TensorInfo
+            val shape = info.shape
+            require(shape.size == 4 && shape[1] == 3L) { "不支持的模型输入形状" }
+            return if (shape[2] == 256L && shape[3] == 256L) ModelKind.PHOTO2CARTOON else ModelKind.STYLE
+        }
+    }
+}
+
+private fun sessionOptions() = OrtSession.SessionOptions().apply {
+    setIntraOpNumThreads(max(1, Runtime.getRuntime().availableProcessors() / 2))
+}
 
 /**
- * Android port of the ptoart pipeline:
+ * Whole-image AnimeGANv2-style generator: NCHW RGB in [-1,1], any size (multiples of 4).
+ */
+class StyleModel(modelFile: File) : Closeable {
+    private val env = OrtEnvironment.getEnvironment()
+    private val session = env.createSession(modelFile.absolutePath, sessionOptions())
+    private val inputName = session.inputNames.first()
+    private val outputName = session.outputNames.first()
+
+    fun stylize(photo: Bitmap, strength: Float, maxSide: Int = 1024): Bitmap {
+        val scale = min(1f, maxSide.toFloat() / max(photo.width, photo.height))
+        val w = max(4, (photo.width * scale / 4).roundToInt() * 4)
+        val h = max(4, (photo.height * scale / 4).roundToInt() * 4)
+        val small = Bitmap.createScaledBitmap(photo, w, h, true)
+        val plane = w * h
+        val px = IntArray(plane).also { small.getPixels(it, 0, w, 0, 0, w, h) }
+        val input = FloatBuffer.allocate(3 * plane)
+        for (i in 0 until plane) {
+            val c = px[i]
+            input.put(i, Color.red(c) / 127.5f - 1f)
+            input.put(plane + i, Color.green(c) / 127.5f - 1f)
+            input.put(2 * plane + i, Color.blue(c) / 127.5f - 1f)
+        }
+        val out = OnnxTensor.createTensor(env, input, longArrayOf(1, 3, h.toLong(), w.toLong())).use { t ->
+            session.run(mapOf(inputName to t)).use { r ->
+                val o = (r.get(outputName).get() as OnnxTensor).floatBuffer
+                FloatArray(o.remaining()).also { o.get(it) }
+            }
+        }
+        require(out.size == 3 * plane) { "风格模型输出尺寸异常: ${out.size}" }
+        val s = strength.coerceIn(0f, 1f)
+        val result = IntArray(plane) { i ->
+            val c = px[i]
+            fun ch(k: Int, src: Int) = ((out[k * plane + i] + 1f) * 127.5f * s + src * (1 - s))
+                .roundToInt().coerceIn(0, 255)
+            Color.rgb(ch(0, Color.red(c)), ch(1, Color.green(c)), ch(2, Color.blue(c)))
+        }
+        if (small !== photo) small.recycle()
+        val styled = Bitmap.createBitmap(result, w, h, Bitmap.Config.ARGB_8888)
+        if (w == photo.width && h == photo.height) return styled
+        return Bitmap.createScaledBitmap(styled, photo.width, photo.height, true).also { styled.recycle() }
+    }
+
+    override fun close() = session.close()
+}
+
+/**
+ * Android port of the ptoart face pipeline:
  * face detection + eye-line alignment (ML Kit) -> upstream-style square crop ->
  * person mask (ML Kit selfie segmentation, replaces seg_model_384.pb) ->
  * photo2cartoon ONNX generator [1,3,256,256] in [-1,1].
@@ -46,6 +113,7 @@ class Cartoonizer(modelFile: File) : Closeable {
             .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
             .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
             .setContourMode(FaceDetectorOptions.CONTOUR_MODE_ALL)
+            .setMinFaceSize(0.05f)
             .build()
     )
     private val segmenter = Segmentation.getClient(
@@ -55,28 +123,63 @@ class Cartoonizer(modelFile: File) : Closeable {
             .build()
     )
 
+    /** An aligned square face crop and the transform from photo pixels to crop pixels. */
+    private class FaceCrop(val bitmap: Bitmap, val toCrop: Matrix)
+
     init {
-        val opts = OrtSession.SessionOptions().apply {
-            setIntraOpNumThreads(max(1, Runtime.getRuntime().availableProcessors() / 2))
-        }
-        session = env.createSession(modelFile.absolutePath, opts)
+        session = env.createSession(modelFile.absolutePath, sessionOptions())
         require(session.inputNames.size == 1) { "模型应只有一个输入" }
         inputName = session.inputNames.first()
         outputName = session.outputNames.firstOrNull { it == "output" } ?: session.outputNames.first()
     }
 
-    /** @param background null = transparent, otherwise an ARGB color. */
-    suspend fun convert(photo: Bitmap, strength: Float, background: Int?): Bitmap {
-        val face = cropFace(photo)
-        val mask = segment(face)
-        return runGenerator(face, mask, strength.coerceIn(0f, 1f), background)
+    /**
+     * Square cartoon avatar of the largest face.
+     * @param background null = transparent, otherwise an ARGB color.
+     */
+    suspend fun convertFace(photo: Bitmap, strength: Float, background: Int?, size: Int = 512): Bitmap {
+        val crop = cropFaces(photo, 1).firstOrNull() ?: throw NoFaceException()
+        val mask = segment(crop.bitmap)
+        val layer = cartoonLayer(crop.bitmap, mask, strength.coerceIn(0f, 1f), size, feather = false)
+        crop.bitmap.recycle()
+        if (background == null) return layer
+        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        Canvas(out).apply {
+            drawColor(background)
+            drawBitmap(layer, 0f, 0f, null)
+        }
+        layer.recycle()
+        return out
     }
 
-    private suspend fun cropFace(src: Bitmap): Bitmap {
-        val faces = faceDetector.process(InputImage.fromBitmap(src, 0)).await()
-        val face = faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
-            ?: throw NoFaceException()
+    /** The whole photo with up to [maxFaces] cartoon faces blended back in place. */
+    suspend fun convertPhoto(photo: Bitmap, strength: Float, maxFaces: Int = 10): Bitmap {
+        val crops = cropFaces(photo, maxFaces)
+        if (crops.isEmpty()) throw NoFaceException()
+        val out = photo.copy(Bitmap.Config.ARGB_8888, true)
+        val canvas = Canvas(out)
+        val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+        // Paint smaller faces first so the largest face wins any overlap.
+        for (crop in crops.asReversed()) {
+            val side = crop.bitmap.width
+            val mask = segment(crop.bitmap)
+            val layer = cartoonLayer(crop.bitmap, mask, strength.coerceIn(0f, 1f), side, feather = true)
+            val toPhoto = Matrix().also { crop.toCrop.invert(it) }
+            canvas.drawBitmap(layer, toPhoto, paint)
+            layer.recycle(); crop.bitmap.recycle()
+        }
+        return out
+    }
 
+    private suspend fun cropFaces(src: Bitmap, maxFaces: Int): List<FaceCrop> {
+        val faces = faceDetector.process(InputImage.fromBitmap(src, 0)).await()
+            .filter { it.boundingBox.width() >= 24 }
+            .sortedByDescending { it.boundingBox.width() * it.boundingBox.height() }
+            .take(maxFaces)
+        return faces.map { cropFace(src, it) }
+    }
+
+    private fun cropFace(src: Bitmap, face: Face): FaceCrop {
         // Align: rotate so the eye line is horizontal (upstream aligns with landmarks).
         val eyes = listOfNotNull(
             face.getLandmark(FaceLandmark.LEFT_EYE)?.position,
@@ -85,13 +188,8 @@ class Cartoonizer(modelFile: File) : Closeable {
         val angle = if (eyes.size == 2)
             Math.toDegrees(atan2((eyes[1].y - eyes[0].y).toDouble(), (eyes[1].x - eyes[0].x).toDouble())).toFloat()
         else 0f
-        val cx = face.boundingBox.exactCenterX()
-        val cy = face.boundingBox.exactCenterY()
-        val m = Matrix().apply { postRotate(-angle, cx, cy) }
-        val aligned = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
-        Canvas(aligned).apply {
-            drawColor(Color.WHITE)
-            drawBitmap(src, m, Paint(Paint.FILTER_BITMAP_FLAG))
+        val m = Matrix().apply {
+            postRotate(-angle, face.boundingBox.exactCenterX(), face.boundingBox.exactCenterY())
         }
 
         val pts = facePoints(face)
@@ -117,13 +215,13 @@ class Cartoonizer(modelFile: File) : Closeable {
             top -= ((right - left) - (bottom - top)) / 2; bottom = top + (right - left)
         }
         val size = bottom - top + 1
+        m.postTranslate(-left.toFloat(), -top.toFloat())
         val crop = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         Canvas(crop).apply {
             drawColor(Color.WHITE)
-            drawBitmap(aligned, -left.toFloat(), -top.toFloat(), null)
+            drawBitmap(src, m, Paint(Paint.FILTER_BITMAP_FLAG))
         }
-        aligned.recycle()
-        return crop
+        return FaceCrop(crop, m)
     }
 
     private fun facePoints(face: Face): List<PointF> {
@@ -148,48 +246,91 @@ class Cartoonizer(modelFile: File) : Closeable {
         return out
     }
 
-    private fun runGenerator(face: Bitmap, fullMask: FloatArray, strength: Float, background: Int?): Bitmap {
-        val n = 256
-        val small = Bitmap.createScaledBitmap(face, n, n, true)
-        val px = IntArray(n * n).also { small.getPixels(it, 0, n, 0, 0, n, n) }
-        val fw = face.width
-        val mask = FloatArray(n * n) { i ->
-            val x = (i % n) * fw / n; val y = (i / n) * fw / n
-            fullMask[y * fw + x]
-        }
-        val input = FloatBuffer.allocate(3 * n * n)
+    /** Runs the generator at 256x256 and returns the cartoon in [-1,1] CHW order. */
+    private fun infer(px: IntArray, mask: FloatArray, n: Int): FloatArray {
         val plane = n * n
+        val input = FloatBuffer.allocate(3 * plane)
         for (i in 0 until plane) {
             val c = px[i]; val a = mask[i]
-            val rgb = intArrayOf(Color.red(c), Color.green(c), Color.blue(c))
-            for (ch in 0..2) input.put(ch * plane + i, (rgb[ch] * a + (1 - a) * 255f) / 127.5f - 1f)
+            input.put(i, (Color.red(c) * a + (1 - a) * 255f) / 127.5f - 1f)
+            input.put(plane + i, (Color.green(c) * a + (1 - a) * 255f) / 127.5f - 1f)
+            input.put(2 * plane + i, (Color.blue(c) * a + (1 - a) * 255f) / 127.5f - 1f)
         }
         val out = OnnxTensor.createTensor(env, input, longArrayOf(1, 3, n.toLong(), n.toLong())).use { t ->
             session.run(mapOf(inputName to t)).use { r ->
-                @Suppress("UNCHECKED_CAST")
                 val o = (r.get(outputName).get() as OnnxTensor).floatBuffer
                 FloatArray(o.remaining()).also { o.get(it) }
             }
         }
         require(out.size == 3 * plane) { "模型输出尺寸异常: ${out.size}" }
-        val result = IntArray(plane)
-        for (i in 0 until plane) {
-            val c = px[i]; val a = mask[i]
-            val src = intArrayOf(Color.red(c), Color.green(c), Color.blue(c))
-            val ch = IntArray(3) { k ->
-                val cart = (out[k * plane + i] + 1f) * 127.5f
-                val fg = cart * strength + src[k] * (1 - strength)
-                val v = if (background == null) fg else {
-                    val bgc = intArrayOf(Color.red(background), Color.green(background), Color.blue(background))[k]
-                    fg * a + bgc * (1 - a)
-                }
-                v.roundToInt().coerceIn(0, 255)
-            }
-            val alpha = if (background == null) (a * 255).roundToInt().coerceIn(0, 255) else 255
-            result[i] = Color.argb(alpha, ch[0], ch[1], ch[2])
-        }
+        return out
+    }
+
+    /**
+     * Cartoon foreground of a face crop as an ARGB layer of [outSize]^2 whose alpha is the
+     * person mask. The 256px cartoon is upscaled; alpha and the strength blend use the
+     * full-resolution crop so edges stay sharp. [feather] softens edges for pasting.
+     */
+    private fun cartoonLayer(face: Bitmap, fullMask: FloatArray, strength: Float, outSize: Int, feather: Boolean): Bitmap {
+        val n = 256
+        val fw = face.width
+        val small = Bitmap.createScaledBitmap(face, n, n, true)
+        val px = IntArray(n * n).also { small.getPixels(it, 0, n, 0, 0, n, n) }
         small.recycle()
-        return Bitmap.createBitmap(result, n, n, Bitmap.Config.ARGB_8888)
+        val mask256 = FloatArray(n * n) { i -> fullMask[((i / n) * fw / n) * fw + (i % n) * fw / n] }
+        val out = infer(px, mask256, n)
+        val plane = n * n
+        val cartoonPx = IntArray(plane) { i ->
+            fun v(k: Int) = ((out[k * plane + i] + 1f) * 127.5f).roundToInt().coerceIn(0, 255)
+            Color.rgb(v(0), v(1), v(2))
+        }
+        val cartoon256 = Bitmap.createBitmap(cartoonPx, n, n, Bitmap.Config.ARGB_8888)
+        val cartoon = Bitmap.createScaledBitmap(cartoon256, outSize, outSize, true)
+        if (cartoon !== cartoon256) cartoon256.recycle()
+        val source = Bitmap.createScaledBitmap(face, outSize, outSize, true)
+
+        val total = outSize * outSize
+        val cp = IntArray(total).also { cartoon.getPixels(it, 0, outSize, 0, 0, outSize, outSize) }
+        val sp = IntArray(total).also { source.getPixels(it, 0, outSize, 0, 0, outSize, outSize) }
+        cartoon.recycle(); if (source !== face) source.recycle()
+        var alpha = FloatArray(total) { i -> fullMask[((i / outSize) * fw / outSize) * fw + (i % outSize) * fw / outSize] }
+        if (feather) alpha = featherMask(alpha, outSize)
+        val result = IntArray(total) { i ->
+            val c = cp[i]; val s = sp[i]
+            fun mix(a: Int, b: Int) = (a * strength + b * (1 - strength)).roundToInt().coerceIn(0, 255)
+            Color.argb(
+                (alpha[i] * 255).roundToInt().coerceIn(0, 255),
+                mix(Color.red(c), Color.red(s)), mix(Color.green(c), Color.green(s)), mix(Color.blue(c), Color.blue(s))
+            )
+        }
+        return Bitmap.createBitmap(result, outSize, outSize, Bitmap.Config.ARGB_8888)
+    }
+
+    /** Box-blur the mask and fade the crop border so pasted faces show no seams. */
+    private fun featherMask(mask: FloatArray, n: Int): FloatArray {
+        val radius = max(1, n / 128)
+        val tmp = FloatArray(mask.size)
+        val out = FloatArray(mask.size)
+        for (y in 0 until n) {          // horizontal pass
+            var sum = 0f
+            for (x in -radius..radius) sum += mask[y * n + x.coerceIn(0, n - 1)]
+            for (x in 0 until n) {
+                tmp[y * n + x] = sum / (2 * radius + 1)
+                sum += mask[y * n + (x + radius + 1).coerceIn(0, n - 1)] - mask[y * n + (x - radius).coerceIn(0, n - 1)]
+            }
+        }
+        for (x in 0 until n) {          // vertical pass
+            var sum = 0f
+            for (y in -radius..radius) sum += tmp[y.coerceIn(0, n - 1) * n + x]
+            for (y in 0 until n) {
+                out[y * n + x] = sum / (2 * radius + 1)
+                sum += tmp[(y + radius + 1).coerceIn(0, n - 1) * n + x] - tmp[(y - radius).coerceIn(0, n - 1) * n + x]
+            }
+        }
+        val fade = max(1, (n * 0.12f).toInt())
+        fun ramp(i: Int) = min(1f, min(i, n - 1 - i).toFloat() / fade)
+        for (y in 0 until n) for (x in 0 until n) out[y * n + x] *= min(ramp(x), ramp(y))
+        return out
     }
 
     override fun close() {
