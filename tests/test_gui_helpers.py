@@ -40,3 +40,10 @@ def test_labels_and_names():
     assert output_name("a/me.jpg", "face") == "me-头像.png"
     assert output_name("me.jpg", "style", "shinkai") == "me-新海诚.jpg"
     assert "人脸" in friendly_error(NoFaceError("x"))
+
+
+def test_friendly_error_out_of_memory():
+    from ptoart.gui import friendly_error
+
+    msg = friendly_error(RuntimeError("DefaultCPUAllocator: not enough memory: you tried to allocate 5110235136 bytes."))
+    assert "内存不足" in msg

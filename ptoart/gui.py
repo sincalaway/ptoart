@@ -104,6 +104,8 @@ def friendly_error(exc):
     text = str(exc)
     if "urlopen" in text or "HTTP" in text or "Connection" in text:
         return "首次使用需要联网下载人脸检测数据（只下载一次）。请连接网络后重试。"
+    if isinstance(exc, MemoryError) or "not enough memory" in text or "bad allocation" in text:
+        return "内存不足。请关闭其他占内存的程序，或关掉「超分辨率增强」、选小一点的尺寸后重试。"
     return f"处理失败：{type(exc).__name__}: {exc}"
 
 

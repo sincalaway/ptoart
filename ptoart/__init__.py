@@ -2,7 +2,7 @@
 from .config import ArtConfig
 from .errors import ImageError, ModelError, NoFaceError, PtoartError
 
-__version__ = "0.3.2"
+__version__ = "0.3.3"
 __all__ = ["ArtConfig", "ArtPipeline", "PtoartError", "ModelError", "ImageError", "NoFaceError"]
 
 
