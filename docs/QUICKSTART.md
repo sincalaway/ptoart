@@ -13,7 +13,7 @@
 | 文件 | 必需？ | 作用 |
 | --- | --- | --- |
 | `ptoart-android.apk` | 必需 | App 安装包 |
-| `photo2cartoon_weights.onnx` | 必需（做卡通头像） | 卡通头像模型 |
+| `ptoart_weights.onnx` | 必需（做卡通头像） | 卡通头像模型 |
 | `ptoart-styles-animeganv2.zip` | 可选 | 宫崎骏、新海诚等 6 种整图风格 |
 | `ptoart-upscalers-realesrgan.zip` | 可选 | 让结果更清晰的超分模型 |
 
@@ -21,7 +21,7 @@
 
 1. 点开下载好的 `ptoart-android.apk` 安装。手机提示“禁止安装未知来源应用”时，按提示允许浏览器/文件管理器安装即可（安卓 7.0 及以上）。
 2. 两个 zip 先用手机自带的“文件管理”解压（长按 → 解压）。
-3. 打开 App，点 **「导入模型（.onnx，可多选）」**，选中 `photo2cartoon_weights.onnx`；想要风格和高清，再把解压出来的 `hayao.onnx`、`shinkai.onnx`… 和 `anime.onnx` 一起多选导入。导入一次即可，以后不用再导。
+3. 打开 App，点 **「导入模型（.onnx，可多选）」**，选中 `ptoart_weights.onnx`；想要风格和高清，再把解压出来的 `hayao.onnx`、`shinkai.onnx`… 和 `anime.onnx` 一起多选导入。导入一次即可，以后不用再导。
 4. 在下拉框选模式：
    - **卡通头像**：最大那张脸，输出 512×512 头像；
    - **整张照片**：照片里每张脸都卡通化，再贴回原图，身体和背景不变；
@@ -40,7 +40,7 @@
 | 文件 | 必需？ |
 | --- | --- |
 | `ptoart-windows-x64-cpu.zip` | 必需 |
-| `photo2cartoon_weights.pt` | 必需（头像、整张照片） |
+| `ptoart_weights.pt` | 必需（头像、整张照片） |
 | `seg_model_384.pb` | 必需（头像、整张照片） |
 | `ptoart-styles-animeganv2.zip` | 可选（整图风格） |
 | `ptoart-upscalers-realesrgan.zip` | 可选（更清晰） |
@@ -48,7 +48,7 @@
 **步骤：**
 
 1. 右键 `ptoart-windows-x64-cpu.zip` → **全部解压缩**，比如解压到 `C:\ptoart`。不要在压缩包里直接运行。
-2. 把 `photo2cartoon_weights.pt` 和 `seg_model_384.pb` 放进 `C:\ptoart\ptoart\weights` 文件夹。
+2. 把 `ptoart_weights.pt` 和 `seg_model_384.pb` 放进 `C:\ptoart\ptoart\weights` 文件夹。
 3. （可选）把风格 zip 解压到 `weights\styles`，把超分 zip 解压到 `weights\upscale`。最终像这样：
 
    ```text
@@ -59,7 +59,7 @@
    ├── 3-style-hayao.bat     ← 拖照片到这里：宫崎骏风格
    ├── _internal\
    └── weights\
-       ├── photo2cartoon_weights.pt
+       ├── ptoart_weights.pt
        ├── seg_model_384.pb
        ├── styles\hayao.onnx、shinkai.onnx …
        └── upscale\anime.onnx、general.onnx
@@ -86,7 +86,7 @@ cd C:\ptoart\ptoart
 
 ## 三、常见问题
 
-- **提示找不到模型**：检查文件名没被改（如变成 `photo2cartoon_weights (1).pt`），且放在 `weights` 文件夹里。
+- **提示找不到模型**：检查文件名没被改（如变成 `ptoart_weights (1).pt`），且放在 `weights` 文件夹里。
 - **没检测到人脸**：用正脸、清晰、光线好的照片；侧脸、遮挡、太小的脸可能检测不到。只想要动漫风可以用“整图风格”，它不需要人脸。
 - **太慢**：纯 CPU 运行，大图 + 超分可能要十几秒到一分钟，属正常。
-- **能商用吗**：卡通头像（photo2cartoon，MIT）和超分（Real-ESRGAN，BSD-3）可以；**AnimeGANv2 整图风格仅限非商业用途**。
+- **能商用吗**：卡通头像（MIT）和超分（Real-ESRGAN，BSD-3）可以；**AnimeGANv2 整图风格仅限非商业用途**。

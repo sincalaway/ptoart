@@ -116,7 +116,7 @@ def batch(pipeline, source, destination, *, recursive=False, overwrite=False):
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(prog="ptoart", description="Portrait-to-cartoon, compatible with photo2cartoon weights")
+    parser = argparse.ArgumentParser(prog="ptoart", description="ptoart: portrait to cartoon")
     parser.add_argument("--version", action="version", version=f"ptoart {__version__}")
     commands = parser.add_subparsers(dest="command", required=True)
     single = commands.add_parser("convert", help="Convert one photo")

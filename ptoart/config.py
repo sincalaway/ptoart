@@ -53,7 +53,7 @@ class ArtConfig:
             raise ValueError("background must contain three integer RGB values from 0 to 255")
         root = Path(self.model_dir or os.environ.get("PTOART_MODEL_DIR", "~/.cache/ptoart/models"))
         object.__setattr__(self, "model_dir", root.expanduser().resolve())
-        filename = "photo2cartoon_weights.pt" if self.backend == "torch" else "photo2cartoon_weights.onnx"
+        filename = "ptoart_weights.pt" if self.backend == "torch" else "ptoart_weights.onnx"
         object.__setattr__(self, "weights", Path(self.weights or root / filename).expanduser().resolve())
         if self.style:
             candidate = Path(self.style).expanduser()

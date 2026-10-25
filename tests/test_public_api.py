@@ -295,6 +295,6 @@ def test_cli_doctor_checks_presence_without_loading_ml_frameworks(tmp_path):
     assert result.returncode in (0, 2)
     report = json.loads(result.stdout)
     assert report["backend"] == "torch"
-    assert report["models"] == {str((tmp_path / "photo2cartoon_weights.pt").resolve()): False}
+    assert report["models"] == {str((tmp_path / "ptoart_weights.pt").resolve()): False}
     assert "Presence checks only" in report["note"]
     assert "unexpected ML import" not in result.stderr

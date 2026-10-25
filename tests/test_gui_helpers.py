@@ -12,7 +12,7 @@ def make(root, *names):
 
 
 def test_scan_models_detects_everything(tmp_path):
-    make(tmp_path, "photo2cartoon_weights.pt", "seg_model_384.pb", "styles/shinkai.onnx",
+    make(tmp_path, "ptoart_weights.pt", "seg_model_384.pb", "styles/shinkai.onnx",
          "styles/hayao.onnx", "styles/custom.onnx", "upscale/anime.onnx")
     models = scan_models(tmp_path)
     assert models.face and models.any
@@ -21,7 +21,7 @@ def test_scan_models_detects_everything(tmp_path):
 
 
 def test_scan_models_needs_both_face_files(tmp_path):
-    make(tmp_path, "photo2cartoon_weights.pt")
+    make(tmp_path, "ptoart_weights.pt")
     assert not scan_models(tmp_path).face
 
 

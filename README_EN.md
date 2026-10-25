@@ -13,7 +13,7 @@ For Windows 10/11 x64, CPU only; no Python installation required. This is a **co
 1. Open [Windows EXE workflow runs](https://github.com/sincalaway/ptoart/actions/workflows/windows-exe.yml) and select a successful run on `refactor/ptoart-20261023`.
 2. Download **ptoart-windows-x64-cpu** under **Artifacts** (web downloads typically require GitHub sign-in). Extract the downloaded ZIP, then extract the inner `ptoart-windows-x64-cpu.zip`.
 3. Keep the entire `ptoart` folder, including `ptoart.exe` and `_internal`. Do not run from inside the ZIP or copy only the executable.
-4. Download the models from the same [Release](https://github.com/sincalaway/ptoart/releases/latest): `photo2cartoon_weights.pt` and `seg_model_384.pb` go in a `weights` folder beside the EXE (required for avatar/photo modes). Optional: `photo2cartoon_weights.onnx` (Android app, or `--backend onnx`), `ptoart-styles-animeganv2.zip` → `weights\styles\`, `ptoart-upscalers-realesrgan.zip` → `weights\upscale\`. The bundled `weights/README.txt` is not a model. Licences: photo2cartoon MIT, Real-ESRGAN BSD-3, AnimeGANv2 non-commercial only.
+4. Download the models from the same [Release](https://github.com/sincalaway/ptoart/releases/latest): `ptoart_weights.pt` and `seg_model_384.pb` go in a `weights` folder beside the EXE (required for avatar/photo modes). Optional: `ptoart_weights.onnx` (Android app, or `--backend onnx`), `ptoart-styles-animeganv2.zip` → `weights\styles\`, `ptoart-upscalers-realesrgan.zip` → `weights\upscale\`. The bundled `weights/README.txt` is not a model. Licences: cartoon generator MIT (from minivision-ai/photo2cartoon), Real-ESRGAN BSD-3, AnimeGANv2 non-commercial only.
 5. Put your photo at `portrait.jpg`, open PowerShell and change to the EXE folder (replace the example location):
 
 ```powershell
@@ -40,7 +40,7 @@ Artifacts are retained for 30 days. A known successful historical build is [run 
 - `--upscale anime|general` uses a Real-ESRGAN compact x4 model from `<model-dir>/upscale/` instead of plain interpolation whenever output is enlarged (avatar `--size` > 256, large pasted faces, downscaled style inference).
 - `--background transparent` requires PNG, WebP or TIFF output. Default background is white. Segmentation quality determines alpha edges.
 - `--strength 0.7` blends 70% model output with 30% original cropped portrait; it is not learned style control. Range: 0–1, default 1.
-- `--backend onnx` requires `photo2cartoon_weights.onnx`. Normal-photo preprocessing still needs segmentation, face-alignment/Torch and TensorFlow; this is not an ONNX-only pipeline.
+- `--backend onnx` requires `ptoart_weights.onnx`. Normal-photo preprocessing still needs segmentation, face-alignment/Torch and TensorFlow; this is not an ONNX-only pipeline.
 - `--aligned` is only for already aligned, tightly cropped square portraits. It still needs generator weights, skips detection/segmentation and treats the whole image as opaque. Do not use it merely to bypass errors on normal photos.
 - Existing images are not overwritten unless `--overwrite` is given. Source and destination must always differ. Existing JSON reports are **never** overwritten, even with `--overwrite`; choose a new report name.
 - Batch outputs retain relative directories and append `.png` to the original filename (`person.jpg.png`). Per-image failures are recorded and processing continues after successful model initialization.

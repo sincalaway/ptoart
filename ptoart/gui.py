@@ -28,7 +28,7 @@ IMAGE_TYPES = (("图片", "*.jpg *.jpeg *.png *.bmp *.webp"), ("所有文件", "
 @dataclass
 class Models:
     root: Path
-    face: bool = False          # photo2cartoon_weights.pt + seg_model_384.pb
+    face: bool = False          # ptoart_weights.pt + seg_model_384.pb
     styles: dict = field(default_factory=dict)    # key -> path
     upscalers: dict = field(default_factory=dict)  # key -> path
 
@@ -54,7 +54,7 @@ def find_model_dir():
 def scan_models(root):
     root = Path(root)
     models = Models(root=root)
-    models.face = (root / "photo2cartoon_weights.pt").is_file() and (root / "seg_model_384.pb").is_file()
+    models.face = (root / "ptoart_weights.pt").is_file() and (root / "seg_model_384.pb").is_file()
     styles = root / "styles"
     if styles.is_dir():
         found = {p.stem: p for p in styles.glob("*.onnx")}
@@ -384,7 +384,7 @@ def run_gui(screenshot=None):
             ready = bool(self.sources) and have and not self.working
             self.go_btn.configure(state="normal" if ready else "disabled")
             if not have and not self.working:
-                need = ("photo2cartoon_weights.pt 和 seg_model_384.pb" if mode != "style"
+                need = ("ptoart_weights.pt 和 seg_model_384.pb" if mode != "style"
                         else "styles 文件夹中的风格模型（如 hayao.onnx）")
                 self.status.configure(text=f"缺少模型：请把 {need} 放进模型文件夹，再点「重新检测模型」")
             elif not self.working and not self.sources:

@@ -12,13 +12,13 @@
 
 | 模式 | 效果 | 需要的模型 |
 | --- | --- | --- |
-| `face`（默认） | 最大一张脸的方形卡通头像，`--size` 可设 64–2048（默认 256） | `photo2cartoon_weights.pt/.onnx` + `seg_model_384.pb` |
+| `face`（默认） | 最大一张脸的方形卡通头像，`--size` 可设 64–2048（默认 256） | `ptoart_weights.pt/.onnx` + `seg_model_384.pb` |
 | `photo` | 整张照片保持原尺寸，所有人脸（`--max-faces`，默认 10）卡通化后羽化贴回原图；身体和背景保持写实 | 同上 |
 | `style` | AnimeGANv2 整图风格化（风景、全身照都可），`--style` 选择风格 | `weights/styles/<风格>.onnx` |
 
 整图风格可选：`hayao`（宫崎骏）、`shinkai`（新海诚）、`paprika`（今敏）、`celeba_distill`、`face_paint_512_v1`、`face_paint_512_v2`。运行 `python tools/export_styles.py -o weights/styles` 会自动下载并转换全部风格（每个约 8.7 MB）。**AnimeGANv2 权重仅限非商业用途。**
 
-photo2cartoon 生成器只在 256×256 推理。更大的 `--size` 默认用 Lanczos + 轻度锐化放大；加 `--upscale anime` 则用 Real-ESRGAN 超分，能补出清晰线条。透明边缘和强度混合始终使用原分辨率。重构未消除上游训练数据的人群偏差。
+卡通头像生成器只在 256×256 推理。更大的 `--size` 默认用 Lanczos + 轻度锐化放大；加 `--upscale anime` 则用 Real-ESRGAN 超分，能补出清晰线条。透明边缘和强度混合始终使用原分辨率。重构未消除上游训练数据的人群偏差。
 
 | 你想怎么用 | 从哪里开始 |
 | --- | --- |
@@ -33,9 +33,9 @@ photo2cartoon 生成器只在 256×256 推理。更大的 `--size` 默认用 Lan
 
 | 文件 | 大小 | 用途 | Windows 放到 | 安卓 |
 | --- | --- | --- | --- | --- |
-| `photo2cartoon_weights.pt` | 约 144 MB | 卡通头像生成器（Torch，Windows 默认后端） | `weights\` | 不需要 |
+| `ptoart_weights.pt` | 约 144 MB | 卡通头像生成器（Torch，Windows 默认后端） | `weights\` | 不需要 |
 | `seg_model_384.pb` | 约 32 MB | 人像分割（Windows 头像/整张照片模式必需） | `weights\` | 不需要（用内置 ML Kit） |
-| `photo2cartoon_weights.onnx` | 约 18 MB | 卡通头像生成器（ONNX，安卓必需；Windows 加 `--backend onnx` 时用） | `weights\`（可选） | 导入 |
+| `ptoart_weights.onnx` | 约 18 MB | 卡通头像生成器（ONNX，安卓必需；Windows 加 `--backend onnx` 时用） | `weights\`（可选） | 导入 |
 | `ptoart-styles-animeganv2.zip` | 约 50 MB | 6 种整图风格：宫崎骏、新海诚、Paprika、CelebA 蒸馏、Face Paint v1/v2 | 解压到 `weights\styles\` | 解压后导入想要的 |
 | `ptoart-upscalers-realesrgan.zip` | 约 7 MB | 超分辨率放大：`anime`（卡通，快）、`general`（通用） | 解压到 `weights\upscale\` | 导入一个（推荐 anime） |
 
@@ -46,21 +46,21 @@ C:\ptoart\
 ├── ptoart.exe
 ├── _internal\
 └── weights\
-    ├── photo2cartoon_weights.pt
+    ├── ptoart_weights.pt
     ├── seg_model_384.pb
-    ├── photo2cartoon_weights.onnx      # 可选
+    ├── ptoart_weights.onnx      # 可选
     ├── styles\hayao.onnx …            # 整图风格
     └── upscale\anime.onnx、general.onnx # 超分
 ```
 
 只想用整图风格时，只需要 `styles` 里的模型，不需要 `.pt`/`.pb`。训练用的 `model_mobilefacenet.pth` 和 `cartoon_data` 训练图片不放进 Release，普通使用都不需要（需要训练可从[光鸭云盘](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)或[上游资源包](docs/MODELS.md)获取）。
 
-许可：photo2cartoon 权重来自 [minivision-ai/photo2cartoon](https://github.com/minivision-ai/photo2cartoon)（MIT）；超分模型来自 [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)（BSD-3）；**AnimeGANv2 风格权重仅限非商业用途**。
+许可：卡通头像权重来自 [minivision-ai/photo2cartoon](https://github.com/minivision-ai/photo2cartoon)（MIT）；超分模型来自 [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)（BSD-3）；**AnimeGANv2 风格权重仅限非商业用途**。
 
 ## 安卓 App
 
 1. 在 [Releases](https://github.com/sincalaway/ptoart/releases) 下载 `ptoart-android.apk` 安装（Android 7.0+，需允许安装未知来源应用；APK 为调试签名）。
-2. 在同一 Release 下载 **`photo2cartoon_weights.onnx`** 存到手机，在 App 中点「导入模型」选中它（模型不随 App 分发）。
+2. 在同一 Release 下载 **`ptoart_weights.onnx`** 存到手机，在 App 中点「导入模型」选中它（模型不随 App 分发）。
 3. 想要整图风格或更清晰的头像，把 `ptoart-styles-animeganv2.zip`、`ptoart-upscalers-realesrgan.zip` 解压后，在「导入模型」里多选导入（App 自动识别模型类型）。导入超分模型后会出现「超分辨率增强」开关。
 4. 选照片，在下拉框选模式：「卡通头像」（512×512，可透明背景）、「整张照片」（所有人脸卡通化贴回原图）或「整图风格：宫崎骏/新海诚/…」，调强度后转换并保存 PNG。
 
@@ -87,7 +87,7 @@ C:\ptoart\
 ├── ptoart.exe
 ├── _internal\                        # 保留整个文件夹
 ├── weights\
-│   ├── photo2cartoon_weights.pt       # 卡通生成器
+│   ├── ptoart_weights.pt       # 卡通生成器
 │   └── seg_model_384.pb               # 人像分割模型
 └── portrait.jpg                      # 你自己的测试照片
 ```
@@ -171,7 +171,7 @@ cd "C:\ptoart"
 
 ### 6. 可选：ONNX 或已对齐头像
 
-Windows 包也包含 ONNX Runtime。准备 `photo2cartoon_weights.onnx` 后，用同一后端检查和转换；普通照片仍需要分割模型及人脸预处理，不是纯 ONNX 依赖链：
+Windows 包也包含 ONNX Runtime。准备 `ptoart_weights.onnx` 后，用同一后端检查和转换；普通照片仍需要分割模型及人脸预处理，不是纯 ONNX 依赖链：
 
 ```powershell
 .\ptoart.exe doctor --backend onnx --model-dir .\weights --device cpu
@@ -253,7 +253,7 @@ python -m ptoart batch ./photos ./output-batch --recursive --model-dir ./weights
 不指定目录时默认使用 `~/.cache/ptoart/models/`；也可设置环境变量 `PTOART_MODEL_DIR`。优先级：单文件 `--weights` / `--segmentation` > `--model-dir` > 环境变量 > 默认目录。相对路径基于当前工作目录。
 
 ```bash
-ptoart convert portrait.jpg avatar.png --weights ./weights/photo2cartoon_weights.pt --segmentation ./weights/seg_model_384.pb --device cpu
+ptoart convert portrait.jpg avatar.png --weights ./weights/ptoart_weights.pt --segmentation ./weights/seg_model_384.pb --device cpu
 ```
 
 读取支持 EXIF 方向、灰度和透明图片；输入透明区域先合成为白色。透明输出的 alpha 来自人像分割，不是保留输入文件原有透明度。
@@ -289,7 +289,7 @@ python test.py --photo_path ./images/photo_test.jpg --save_path ./output/avatar.
 python test_onnx.py --photo_path ./images/photo_test.jpg --save_path ./output/avatar.png
 ```
 
-旧 `Photo2Cartoon.inference(RGB)` 返回 BGR，新 `ArtPipeline` 返回 RGB。旧入口不再默认覆盖目标；需要覆盖时使用新版 CLI 的 `--overwrite`。保留旧模型文件名以兼容官方 checkpoint。
+旧版 `test.py` 推理入口返回 BGR，新 `ArtPipeline` 返回 RGB。旧入口不再默认覆盖目标；需要覆盖时使用新版 CLI 的 `--overwrite`。模型文件统一命名为 `ptoart_weights.pt` / `ptoart_weights.onnx`；上游官方 checkpoint 改成这个文件名即可直接使用。
 
 训练代码在 `train.py` / `models/`，另需 `.[train]` 和 MobileFaceNet 权重，仍需 GPU，未完成现代依赖下的训练验收。数据可放在 `dataset/ptoart/{trainA,trainB,testA,testB}` 后运行 `python train.py --dataset ptoart`。`predict.py` / `cog.yaml` 是可选 Cog 部署适配，容器构建和线上部署尚未验证。
 

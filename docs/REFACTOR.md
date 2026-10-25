@@ -2,7 +2,7 @@
 
 ## 最重要的结论
 
-photo2cartoon 的价值在已训练的人像风格模型，而主要维护障碍在模型周围的工程代码。上游同时使用 PyTorch 生成器、face-alignment 检测关键点和 TensorFlow 冻结图分割；直接替换网络、裁剪比例或归一化会影响官方权重效果。因此本次选择先稳定外层，再扩展功能，没有声称改进模型画质。
+上游项目的价值在已训练的人像风格模型，而主要维护障碍在模型周围的工程代码。上游同时使用 PyTorch 生成器、face-alignment 检测关键点和 TensorFlow 冻结图分割；直接替换网络、裁剪比例或归一化会影响官方权重效果。因此本次选择先稳定外层，再扩展功能，没有声称改进模型画质。
 
 基线代码来自 [minivision-ai/photo2cartoon](https://github.com/minivision-ai/photo2cartoon)，提交 `6204e27a71620500c2f5b2ffd36646b0e2e5c110`。许可证为 MIT，保留原版权声明。
 

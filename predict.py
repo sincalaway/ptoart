@@ -10,7 +10,7 @@ from ptoart.io import write_image
 
 def legacy_config():
     root = FilePath(__file__).resolve().parent
-    return ArtConfig(weights=root / "models/photo2cartoon_weights.pt",
+    return ArtConfig(weights=root / "models/ptoart_weights.pt",
                      segmentation=root / "utils/seg_model_384.pb")
 
 

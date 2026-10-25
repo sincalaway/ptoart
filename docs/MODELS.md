@@ -4,7 +4,7 @@
 
 ## 到哪里取得
 
-**备用（国内直连）：[光鸭云盘 · ptoart 模型](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)**，由仓库维护者分享，包含 Windows/桌面版所需的 `photo2cartoon_weights.pt`、`seg_model_384.pb`，安卓 App 所需的 `photo2cartoon_weights.onnx`，以及仅训练用的 `model_mobilefacenet.pth`。下载后按下表放置文件；建议用 `sha256sum`/`Get-FileHash` 自行留档校验。
+**备用（国内直连）：[光鸭云盘 · ptoart 模型](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)**，由仓库维护者分享，包含 Windows/桌面版所需的 `ptoart_weights.pt`、`seg_model_384.pb`，安卓 App 所需的 `ptoart_weights.onnx`，以及仅训练用的 `model_mobilefacenet.pth`。网盘里的旧文件名请按下表改名。下载后按下表放置文件；建议用 `sha256sum`/`Get-FileHash` 自行留档校验。
 
 其他来源：
 
@@ -14,8 +14,8 @@
 
 | 文件 | 用途 | 新 CLI 默认位置 |
 | --- | --- | --- |
-| `photo2cartoon_weights.pt` | Torch 生成器，checkpoint 中含 `genA2B` | `~/.cache/ptoart/models/` |
-| `photo2cartoon_weights.onnx` | ONNX 生成器 | 同上 |
+| `ptoart_weights.pt` | Torch 生成器，checkpoint 中含 `genA2B` | `~/.cache/ptoart/models/` |
+| `ptoart_weights.onnx` | ONNX 生成器 | 同上 |
 | `seg_model_384.pb` | 已裁剪人像分割 | 同上 |
 | `model_mobilefacenet.pth` | 训练时的人脸身份损失，不用于普通推理 | 训练脚本沿用 `models/` |
 
@@ -27,7 +27,7 @@
 
 ```bash
 pip install "torch>=2.5" onnx onnxscript onnxruntime
-python tools/export_onnx.py photo2cartoon_weights.pt photo2cartoon_weights.onnx
+python tools/export_onnx.py ptoart_weights.pt ptoart_weights.onnx
 ```
 
 脚本只导出 `genA2B` 生成器（输入 `input`、输出 `output`，均为 `[1,3,256,256]`），并用 ONNX Runtime 与 Torch 结果做数值比对后打印误差。

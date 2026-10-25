@@ -90,7 +90,7 @@ jobs:
           Copy-Item packaging/windows-bat/*.bat dist/ptoart/
           Copy-Item build-dependencies.txt dist/ptoart/build-dependencies.txt
           New-Item -ItemType Directory -Force dist/ptoart/weights | Out-Null
-          'Place official photo2cartoon_weights.pt and seg_model_384.pb here. Weights are NOT bundled.' | Set-Content dist/ptoart/weights/README.txt
+          'Place official ptoart_weights.pt and seg_model_384.pb here. Weights are NOT bundled.' | Set-Content dist/ptoart/weights/README.txt
           "Source commit: $env:GITHUB_SHA" | Set-Content dist/ptoart/BUILD.txt
           Compress-Archive -Path dist/ptoart -DestinationPath dist/ptoart-windows-x64-cpu.zip -CompressionLevel Optimal
           $hash = (Get-FileHash dist/ptoart-windows-x64-cpu.zip -Algorithm SHA256).Hash.ToLower()

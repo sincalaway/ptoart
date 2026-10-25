@@ -29,12 +29,12 @@ class MainActivity : AppCompatActivity() {
     private var result: Bitmap? = null
     private var cartoonizer: Cartoonizer? = null
     private var styleModel: Pair<File, StyleModel>? = null
-    private val modelFile by lazy { File(filesDir, "photo2cartoon_weights.onnx") }
+    private val modelFile by lazy { File(filesDir, "ptoart_weights.onnx") }
     private val upscalerFile by lazy { File(filesDir, "upscaler.onnx") }
     private var upscaler: Upscaler? = null
     private val styleDir by lazy { File(filesDir, "styles").apply { mkdirs() } }
 
-    /** What the user can produce: face modes need photo2cartoon, styles need their own file. */
+    /** What the user can produce: face modes need the avatar model, styles need their own file. */
     private sealed class Mode(val label: String) {
         class Face(label: String) : Mode(label)
         class Photo(label: String) : Mode(label)
@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity() {
                         val tmp = File(filesDir, "model.tmp")
                         contentResolver.openInputStream(uri)!!.use { i -> tmp.outputStream().use { i.copyTo(it) } }
                         when (ModelInspector.kindOf(tmp)) { // validates before replacing anything
-                            ModelKind.PHOTO2CARTOON -> {
+                            ModelKind.AVATAR -> {
                                 cartoonizer?.close(); cartoonizer = null
                                 check(tmp.renameTo(modelFile)) { "无法保存模型" }
                                 "已导入卡通头像模型"

@@ -28,7 +28,7 @@
 
 ## 尚未验证
 
-没有下载或随包附带官方 `photo2cartoon_weights.pt`、ONNX 生成器及 `seg_model_384.pb`。随机 Torch 权重与合成 ONNX 图只能验证结构、装载和工程链路，**不能产生可用的卡通效果证明**。
+没有下载或随包附带官方 `ptoart_weights.pt`、ONNX 生成器及 `seg_model_384.pb`。随机 Torch 权重与合成 ONNX 图只能验证结构、装载和工程链路，**不能产生可用的卡通效果证明**。
 
 完整 face-alignment + TensorFlow 人脸预处理没有实际运行；官方权重下的原版/新版结果误差、Torch/ONNX 一致性、GPU、性能基准、持续显存占用、跨平台、Cog 容器和训练尚未验收。现代依赖范围和 Cog 依赖固定组合属于候选配置，不是完整推理环境锁文件。
 

@@ -18,7 +18,7 @@
 
 ## 2. 准备权重和照片
 
-权重不在 EXE 包内，但都附在同一个 [Release](https://github.com/sincalaway/ptoart/releases/latest) 的 Assets 里：`photo2cartoon_weights.pt`、`seg_model_384.pb`（必需），`photo2cartoon_weights.onnx`（可选），`ptoart-styles-animeganv2.zip`（解压到 `weights\styles\`）、`ptoart-upscalers-realesrgan.zip`（解压到 `weights\upscale\`）。包内也附有 `MODELS.md`。
+权重不在 EXE 包内，但都附在同一个 [Release](https://github.com/sincalaway/ptoart/releases/latest) 的 Assets 里：`ptoart_weights.pt`、`seg_model_384.pb`（必需），`ptoart_weights.onnx`（可选），`ptoart-styles-animeganv2.zip`（解压到 `weights\styles\`）、`ptoart-upscalers-realesrgan.zip`（解压到 `weights\upscale\`）。包内也附有 `MODELS.md`。
 
 默认 Torch 后端处理普通照片时，将这两个模型放入 `weights`，再准备自己的测试照片：
 
@@ -27,7 +27,7 @@ C:\ptoart\
 ├── ptoart.exe
 ├── _internal\
 ├── weights\
-│   ├── photo2cartoon_weights.pt
+│   ├── ptoart_weights.pt
 │   └── seg_model_384.pb
 └── portrait.jpg
 ```
@@ -95,7 +95,7 @@ cd "C:\ptoart"
 
 加 `--upscale anime` 用 Real-ESRGAN 超分放大，例如 `--size 1024 --upscale anime`。`--output photo` 把每张人脸卡通化后贴回原图（`--max-faces` 默认 10）。`--style` 需要把风格模型放到 `weights\styles\`：hayao（宫崎骏）、shinkai（新海诚）、paprika、celeba_distill、face_paint_512_v1、face_paint_512_v2，Release 中的 `ptoart-styles-animeganv2.zip` 已包含全部风格（仅限非商业用途）。
 
-ONNX：准备 `photo2cartoon_weights.onnx`，检查与转换都加 `--backend onnx`。普通照片仍需要 `seg_model_384.pb` 及人脸预处理：
+ONNX：准备 `ptoart_weights.onnx`，检查与转换都加 `--backend onnx`。普通照片仍需要 `seg_model_384.pb` 及人脸预处理：
 
 ```powershell
 .\ptoart.exe doctor --backend onnx --model-dir .\weights --device cpu

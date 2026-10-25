@@ -1,6 +1,6 @@
 ```
 ├── dataset
-    └── photo2cartoon
+    └── ptoart
         ├── trainA
             ├── xxx.jpg
             ├── yyy.png

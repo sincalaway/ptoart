@@ -5,11 +5,11 @@ from ptoart import ArtConfig, ArtPipeline, NoFaceError
 from test import legacy_main
 
 
-class Photo2Cartoon:
+class Ptoart:
     def __init__(self):
         root = Path(__file__).resolve().parent
         self.pipeline = ArtPipeline(ArtConfig(
-            backend="onnx", weights=root / "models/photo2cartoon_weights.onnx",
+            backend="onnx", weights=root / "models/ptoart_weights.onnx",
             segmentation=root / "utils/seg_model_384.pb",
         ))
 

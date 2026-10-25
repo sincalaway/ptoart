@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ptoart"
 version = "0.3.1"
-description = "Maintainable portrait-to-cartoon inference based on photo2cartoon"
+description = "ptoart: portrait to cartoon avatar, anime style and super-resolution"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {file = "LICENSE"}

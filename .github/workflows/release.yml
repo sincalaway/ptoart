@@ -29,13 +29,14 @@ jobs:
         run: |
           pip install --index-url https://download.pytorch.org/whl/cpu torch
           pip install tensorflow-cpu onnx onnxscript onnxruntime numpy gdown
-      - name: photo2cartoon weights (upstream resource pack, MIT)
+      - name: Cartoon avatar weights (upstream resource pack, MIT)
         run: |
           mkdir -p models-out
           # Upstream resource pack listed in docs/MODELS.md (minivision-ai/photo2cartoon).
           gdown "https://drive.google.com/uc?id=1lsQS8hOCquMFKJFhK_z-n03ixWGkjT2P" -O resources.zip
           unzip -j resources.zip '*/photo2cartoon_weights.pt' '*/seg_model_384.pb' -d models-out
-          python tools/export_onnx.py models-out/photo2cartoon_weights.pt models-out/photo2cartoon_weights.onnx
+          mv models-out/photo2cartoon_weights.pt models-out/ptoart_weights.pt  # upstream file name
+          python tools/export_onnx.py models-out/ptoart_weights.pt models-out/ptoart_weights.onnx
       - name: AnimeGANv2 styles (non-commercial)
         run: |
           python tools/export_styles.py -o styles
@@ -88,8 +89,8 @@ jobs:
           files: |
             dist/ptoart-windows-x64-cpu.zip
             dist/ptoart-android.apk
-            dist/photo2cartoon_weights.pt
-            dist/photo2cartoon_weights.onnx
+            dist/ptoart_weights.pt
+            dist/ptoart_weights.onnx
             dist/seg_model_384.pb
             dist/ptoart-styles-animeganv2.zip
             dist/ptoart-upscalers-realesrgan.zip

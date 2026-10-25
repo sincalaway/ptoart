@@ -1,8 +1,8 @@
-"""Export photo2cartoon_weights.pt (Torch, genA2B) to photo2cartoon_weights.onnx.
+"""Export ptoart_weights.pt (Torch, genA2B) to ptoart_weights.onnx.
 
 Usage:
     pip install "torch>=2.5" onnx onnxscript onnxruntime
-    python tools/export_onnx.py photo2cartoon_weights.pt photo2cartoon_weights.onnx
+    python tools/export_onnx.py ptoart_weights.pt ptoart_weights.onnx
 
 The ONNX file is what the Android app and ``--backend onnx`` expect:
 input float32 [1,3,256,256] in [-1,1], output named ``output`` of the same shape.
@@ -38,8 +38,8 @@ class _Generator:
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("weights", type=Path, help="photo2cartoon_weights.pt")
-    parser.add_argument("output", type=Path, nargs="?", default=Path("photo2cartoon_weights.onnx"))
+    parser.add_argument("weights", type=Path, help="ptoart_weights.pt")
+    parser.add_argument("output", type=Path, nargs="?", default=Path("ptoart_weights.onnx"))
     parser.add_argument("--opset", type=int, default=17)
     args = parser.parse_args(argv)
 

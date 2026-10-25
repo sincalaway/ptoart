@@ -137,11 +137,11 @@ dmypy.json
 *.pt
 
 results/
-photo2cartoon/
+dataset/ptoart/
 experiment/
 upload/
 models_src/
-photo2cartoon_resources.zip
+ptoart_resources.zip
 
 # ptoart local artifacts and external model assets
 *.onnx

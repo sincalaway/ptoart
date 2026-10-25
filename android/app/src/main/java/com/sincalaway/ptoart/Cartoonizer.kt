@@ -30,10 +30,10 @@ import kotlin.math.roundToInt
 class NoFaceException : Exception("未检测到人脸，请使用清晰的正面照片")
 
 /** Which kind of ONNX file the user imported. */
-enum class ModelKind { PHOTO2CARTOON, STYLE, UPSCALER }
+enum class ModelKind { AVATAR, STYLE, UPSCALER }
 
 object ModelInspector {
-    /** photo2cartoon has a fixed [1,3,256,256] input; AnimeGANv2 styles have dynamic H and W. */
+    /** The avatar generator has a fixed [1,3,256,256] input; AnimeGANv2 styles have dynamic H and W. */
     fun kindOf(file: File): ModelKind {
         val env = OrtEnvironment.getEnvironment()
         env.createSession(file.absolutePath, OrtSession.SessionOptions()).use { s ->
@@ -42,7 +42,7 @@ object ModelInspector {
             val shape = info.shape
             require(shape.size == 4 && shape[1] == 3L) { "不支持的模型输入形状" }
             if (s.metadata.customMetadata["ptoart_kind"] == "upscaler") return ModelKind.UPSCALER
-            return if (shape[2] == 256L && shape[3] == 256L) ModelKind.PHOTO2CARTOON else ModelKind.STYLE
+            return if (shape[2] == 256L && shape[3] == 256L) ModelKind.AVATAR else ModelKind.STYLE
         }
     }
 }
@@ -140,7 +140,7 @@ class StyleModel(modelFile: File) : Closeable {
  * Android port of the ptoart face pipeline:
  * face detection + eye-line alignment (ML Kit) -> upstream-style square crop ->
  * person mask (ML Kit selfie segmentation, replaces seg_model_384.pb) ->
- * photo2cartoon ONNX generator [1,3,256,256] in [-1,1].
+ * ptoart avatar ONNX generator [1,3,256,256] in [-1,1].
  */
 class Cartoonizer(modelFile: File) : Closeable {
     /** Optional super-resolution for enlarging the 256px cartoon; owned by the caller. */

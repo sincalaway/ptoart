@@ -48,7 +48,7 @@ def test_torch_backend_random_checkpoint_load_eval_and_cpu_inference(tmp_path):
     assert output.dtype == np.uint8
     assert np.isfinite(output).all()
     # Random initialized weights validate architecture and loading only, not the quality of
-    # actual photo2cartoon pretrained weights or their visual results.
+    # actual pretrained weights or their visual results.
 
 
 def test_torch_backend_rejects_bad_weights_without_unrestricted_pickle_execution(tmp_path):
