@@ -80,6 +80,17 @@ jobs:
           name: gui-screenshot
           path: gui-screenshot.png
           retention-days: 7
+      - name: Bundle face-detector weights (no download at first run)
+        shell: pwsh
+        run: |
+          $env:TORCH_HOME = "$env:GITHUB_WORKSPACE/dist/ptoart/weights/torch"
+          python -c "import face_alignment as fa; fa.FaceAlignment(fa.LandmarksType.TWO_D, device='cpu', face_detector='sfd')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem dist/ptoart/weights/torch/hub/checkpoints
+          @'
+          face_alignment detector weights (S3FD, 2DFAN4) from https://github.com/1adrianb/face-alignment
+          (BSD 3-Clause). Bundled so the app never downloads them at first run.
+          '@ | Set-Content dist/ptoart/weights/torch/README.txt
       - name: Assemble portable ZIP and checksum
         shell: pwsh
         run: |
@@ -90,7 +101,7 @@ jobs:
           Copy-Item packaging/windows-bat/*.bat dist/ptoart/
           Copy-Item build-dependencies.txt dist/ptoart/build-dependencies.txt
           New-Item -ItemType Directory -Force dist/ptoart/weights | Out-Null
-          'Place official ptoart_weights.pt and seg_model_384.pb here. Weights are NOT bundled.' | Set-Content dist/ptoart/weights/README.txt
+          'Put ptoart_weights.pt and seg_model_384.pb here, unzip ptoart-styles.zip into styles\ and the upscalers into upscale\. The torch folder (face detector) is already included; do not delete it.' | Set-Content dist/ptoart/weights/README.txt
           "Source commit: $env:GITHUB_SHA" | Set-Content dist/ptoart/BUILD.txt
           Compress-Archive -Path dist/ptoart -DestinationPath dist/ptoart-windows-x64.zip -CompressionLevel Optimal
           $hash = (Get-FileHash dist/ptoart-windows-x64.zip -Algorithm SHA256).Hash.ToLower()

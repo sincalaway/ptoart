@@ -57,7 +57,11 @@ def config_from(args):
     values = {key: getattr(args, key) for key in keys}
     if values["output"] is None:
         values["output"] = "style" if values["style"] else "face"
-    return ArtConfig(**values)
+    config = ArtConfig(**values)
+    from ptoart.gui import use_bundled_torch_hub
+
+    use_bundled_torch_hub(config.model_dir)
+    return config
 
 
 def doctor(config):
