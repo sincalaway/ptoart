@@ -1,6 +1,6 @@
 # ptoart Windows 便携版使用教程
 
-适用 Windows 10/11 x64，**仅 CPU，无需安装 Python**。这是命令行工具，不是图形界面。请保留整个文件夹，让 `ptoart.exe` 和 `_internal` 始终在一起，不要只复制 EXE。
+适用 Windows 10/11 x64，**仅 CPU，无需安装 Python**。双击 `ptoart.exe` 打开图形界面，带参数运行则是命令行工具。请保留整个文件夹，让 `ptoart.exe` 和 `_internal` 始终在一起，不要只复制 EXE。
 
 > **官方模型权重不随包提供，真实照片的完整检测、分割和卡通出图尚未验证。** 自动构建及随机权重自检通过，不代表真实模型效果已经验收。
 
@@ -14,7 +14,7 @@
 
 `SHA256SUMS.txt` 用于核对内层 ZIP；`BUILD.txt` 标记源码提交，`build-dependencies.txt` 记录构建依赖。EXE 未签名，请只运行可信仓库及运行中的产物，不要为来源不明的程序关闭系统防护。
 
-> 不想敲命令：放好模型后，把照片直接拖到包内的 `1-avatar.bat`（卡通头像）、`2-whole-photo.bat`（整张照片）或 `3-style-hayao.bat`（宫崎骏风格）上，结果在 `output` 文件夹。详见 `QUICKSTART.md`。
+> **双击 `ptoart.exe` 即打开图形界面**（放好模型后即可使用）。也可不开窗口：放好模型后，把照片直接拖到包内的 `1-avatar.bat`（卡通头像）、`2-whole-photo.bat`（整张照片）或 `3-style-hayao.bat`（宫崎骏风格）上，结果在 `output` 文件夹。详见 `QUICKSTART.md`。
 
 ## 2. 准备权重和照片
 

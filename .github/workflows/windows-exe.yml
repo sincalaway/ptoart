@@ -60,8 +60,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'EXE help failed' }
           & $exe --self-test
           if ($LASTEXITCODE -ne 0) { throw 'Frozen runtime self-test failed' }
-          & $exe --gui-screenshot "$env:GITHUB_WORKSPACE/gui-screenshot.png"
-          if ($LASTEXITCODE -ne 0 -or -not (Test-Path "$env:GITHUB_WORKSPACE/gui-screenshot.png")) { throw 'GUI failed to start' }
+          $shot = "$env:GITHUB_WORKSPACE/gui-screenshot.png"
+          $env:PTOART_GUI_LOG = "$env:RUNNER_TEMP/gui.log"
+          & $exe --gui-screenshot $shot *> "$env:RUNNER_TEMP/gui-out.log"
+          $code = $LASTEXITCODE
+          if ($code -ne 0 -or -not (Test-Path $shot)) {
+            Get-Content "$env:RUNNER_TEMP/gui-out.log", "$env:RUNNER_TEMP/gui.log" -ErrorAction SilentlyContinue |
+              Select-Object -Last 40 | ForEach-Object { Write-Output "::error::GUI: $_" }
+            throw "GUI failed to start (exit $code)"
+          }
           & $exe doctor --aligned --device cpu --model-dir "$env:RUNNER_TEMP/ptoart-no-models"
           if ($LASTEXITCODE -ne 2) { throw 'Missing models must return exit code 2' }
           Pop-Location

@@ -71,8 +71,13 @@ def run(argv=None):
         hide_own_console()
         return run_gui()
     if len(args) == 2 and args[0] == "--gui-screenshot":
-        from ptoart.gui import run_gui
-        return run_gui(screenshot=args[1])
+        import traceback
+        try:
+            from ptoart.gui import run_gui
+            return run_gui(screenshot=args[1])
+        except BaseException:
+            Path(os.environ.get("PTOART_GUI_LOG", "gui.log")).write_text(traceback.format_exc(), encoding="utf-8")
+            raise
     # Avoid a Windows C++/dlib dependency. Explicit CLI selections are respected.
     if args and args[0] in {"convert", "batch", "doctor"}:
         if not any(arg == "--detector" or arg.startswith("--detector=") for arg in args):

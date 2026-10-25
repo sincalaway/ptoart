@@ -2,7 +2,7 @@
 
 | 平台 | 文件 | 说明 |
 | --- | --- | --- |
-| Windows 10/11 x64 | `ptoart-windows-x64-cpu.zip` | 便携命令行版，仅 CPU，解压后运行 `ptoart.exe`；把模型放进 EXE 旁的 `weights` 文件夹即可自动识别 |
+| Windows 10/11 x64 | `ptoart-windows-x64-cpu.zip` | 便携版，仅 CPU。**双击 `ptoart.exe` 打开图形界面**；也可命令行或拖拽 `.bat` 使用。把模型放进 EXE 旁的 `weights` 文件夹即可自动识别 |
 | Android 7.0+ | `ptoart-android.apk` | 图形界面 App：卡通头像、整张照片人脸卡通化、整图风格三种模式，离线运行 |
 | 头像生成器 | `photo2cartoon_weights.pt` | Windows 默认后端（MIT） |
 | 人像分割 | `seg_model_384.pb` | Windows 头像/整张照片模式必需 |
@@ -16,6 +16,7 @@
 - `--size`：高清头像，最高 2048（安卓头像默认 512）。
 - `--style`：AnimeGANv2 整图风格，6 种风格可选，风景和全身照也能用。
 - `--upscale anime|general`：Real-ESRGAN 超分放大，头像和整图更清晰（安卓有开关）。
+- **Windows 图形界面**：双击 `ptoart.exe` 打开窗口，选模式、风格、尺寸、强度、超分，原图与效果并排预览，支持多张批量。
 - 新增[小白使用教程](https://github.com/sincalaway/ptoart/blob/refactor/ptoart-20261023/docs/QUICKSTART.md)；Windows 包内附拖拽即用的 `.bat`。
 - 所有模型直接附在 Release 中，无需再去网盘或自行转换。
 

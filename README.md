@@ -1,6 +1,6 @@
 # ptoart
 
-将人像照片转换为卡通头像的命令行工具，基于 [minivision-ai/photo2cartoon](https://github.com/minivision-ai/photo2cartoon) 重构。支持 Windows 便携 EXE、Python CLI 和 Python API，以及单图、批量、透明背景和强度混合。
+将人像照片转换为卡通头像的工具（Windows 图形界面 / 安卓 App / 命令行），基于 [minivision-ai/photo2cartoon](https://github.com/minivision-ai/photo2cartoon) 重构。支持 Windows 便携 EXE、Python CLI 和 Python API，以及单图、批量、透明背景和强度混合。
 
 **第一次用？看 [小白使用教程](docs/QUICKSTART.md)** · [English](README_EN.md) · [Windows 便携版说明](packaging/WINDOWS-README.md) · [模型准备](docs/MODELS.md) · [模型下载（Release）](https://github.com/sincalaway/ptoart/releases/latest)
 
@@ -68,7 +68,7 @@ C:\ptoart\
 
 ## Windows 使用教程
 
-适用 Windows 10/11 x64，**仅 CPU、命令行界面**，无需另装 Python。不含 CUDA、dlib 或官方权重；不要把它当作双击打开的图形软件。
+适用 Windows 10/11 x64，仅 CPU，无需另装 Python。**双击 `ptoart.exe` 打开图形界面**（选照片、选效果、预览、保存，支持批量），下面的命令行用法供进阶使用。不含 CUDA 或 dlib。
 
 ### 1. 下载并完整解压
 
@@ -191,7 +191,7 @@ Windows 包也包含 ONNX Runtime。准备 `photo2cartoon_weights.onnx` 后，�
 
 | 现象 | 处理方法 |
 | --- | --- |
-| 双击后窗口闪退 | 这是命令行工具，请在 PowerShell 中运行，保留错误信息 |
+| 双击后没有窗口或闪退 | 确认已完整解压且 `_internal` 在旁边；仍不行在 PowerShell 运行 `.\ptoart.exe gui` 查看错误信息 |
 | PowerShell 找不到命令 | 先 `cd` 到 EXE 所在目录，使用 `.\ptoart.exe`；检查是否仍在 ZIP 内或少解压了一层 |
 | `doctor` 中模型为 `false` / 缺少模型 | 核对文件名、真实文件和 `--model-dir`；不要只放 `README.txt` |
 | `doctor` 通过但模型加载失败 | 文件存在不代表格式或内容有效；确认可信权重和后端匹配，不要用改名的网页文件 |
