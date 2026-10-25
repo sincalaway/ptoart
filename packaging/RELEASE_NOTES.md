@@ -7,8 +7,31 @@
 | 头像生成器 | `ptoart_weights.pt` | Windows 默认后端（MIT） |
 | 人像分割 | `seg_model_384.pb` | Windows 头像/整张照片模式必需 |
 | 头像生成器 ONNX | `ptoart_weights.onnx` | 安卓必需；Windows `--backend onnx` 可选 |
-| 风格模型 | `ptoart-styles.zip` | 宫崎骏、新海诚、Paprika、CelebA 蒸馏、Face Paint v1/v2 六种 AnimeGANv2 风格 ONNX（仅限非商业用途） |
+| 风格模型 | `ptoart-styles.zip` | 11 种 AnimeGANv2/v3 风格 ONNX，含动漫脸、日漫二次元、吉卜力人像、黑白素描 4 种头像画风（仅限非商业用途）。Windows 解压到 `weights\styles\`，安卓解压后多选导入 |
 | 超分模型 | `ptoart-upscalers-realesrgan.zip` | Real-ESRGAN `anime`、`general` x4（BSD-3） |
+
+## 本版更新（v0.3.8）
+
+**画风（头像 / 整张照片）**：新增 5 种，可在 Windows「画风」下拉框或安卓模式下拉框里选择：
+
+| 画风 | 模型文件 | 适合 |
+| --- | --- | --- |
+| 动漫脸（推荐，默认） | `face_paint_512_v2.onnx` | 五官自然不变形，儿童、老人都好看 |
+| 日漫二次元 | `jp_face.onnx` | 大眼睛二次元脸 |
+| 吉卜力人像 | `ghibli_face.onnx` | 柔和手绘油彩 |
+| 黑白素描 | `portrait_sketch.onnx` | 黑白线稿 |
+| 经典卡通 | `ptoart_weights.pt/.onnx` | 原版线条，儿童照片易变形 |
+
+**整图风格**：新增 宫崎骏 v3、新海诚 v3，共 11 种。
+
+**Windows 界面**：
+- 人脸检测模型已打包（`weights\torch`），首次使用不再联网下载，不会卡在「正在加载」。
+- 启动时后台加载一次模型（底部显示「模型已就绪」）；切换画风、尺寸、强度不再重新加载。
+- 每次结果**自动保存**到照片旁的 `ptoart输出` 文件夹，底部显示完整路径；按钮：「↶ 撤销」「↷ 重做」「另存为…」「打开输出文件夹」。
+- 效果图上方标明用的模式、画风、尺寸和强度；改了设置未转换时按钮变成「应用新设置」。
+- 「动漫风格」改名为「整图风格」。
+
+**命令行**：`--style jp_face|ghibli_face|portrait_sketch|face_paint_512_v2` 配合 `--output face/photo` 换画风。
 
 ## 新功能（v0.3.0）
 

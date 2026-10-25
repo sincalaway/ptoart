@@ -28,6 +28,13 @@ STYLE_NAMES = {
 UPSCALE_NAMES = {"anime": "动漫（快）", "general": "通用（细节多）"}
 MODES = {"face": "卡通头像", "photo": "整张照片", "style": "整图风格"}
 # Face looks for avatar/whole-photo modes: key -> (label, style model or None for the ptoart generator).
+LOOK_HINTS = {
+    "paint": "五官自然不变形，儿童、老人都好看",
+    "jp": "大眼睛二次元脸",
+    "ghibli": "柔和手绘油彩感",
+    "sketch": "黑白线稿",
+    "classic": "原版卡通，线条夸张；儿童照片可能变形",
+}
 FACE_LOOKS = {
     "paint": ("动漫脸（推荐）", "face_paint_512_v2"),
     "jp": ("日漫二次元", "jp_face"),
@@ -309,6 +316,8 @@ def run_gui(screenshot=None):
                                                command=lambda _v: self._ui_check_dirty(),
                                                fg_color=ACCENT, button_color=ACCENT_HOVER,
                                                button_hover_color=ACCENT_HOVER, dropdown_font=font(13))
+            self.look_hint = ctk.CTkLabel(self.opts, text="", font=font(12), text_color=MUTED, wraplength=270,
+                                          justify="left")
             self.transparent = ctk.CTkSwitch(self.opts, text="透明背景（PNG）", font=font(13),
                                              progress_color=ACCENT, command=self._ui_check_dirty)
 
@@ -438,7 +447,9 @@ def run_gui(screenshot=None):
             if mode in ("face", "photo") and self.models.looks:
                 self.look_label.grid(row=row, column=0, sticky="w")
                 row += 1
-                self.look_menu.grid(row=row, column=0, sticky="ew", pady=(2, 10))
+                self.look_menu.grid(row=row, column=0, sticky="ew", pady=(2, 2))
+                row += 1
+                self.look_hint.grid(row=row, column=0, sticky="w", pady=(0, 10))
                 row += 1
             if mode == "face":
                 self.size_label.grid(row=row, column=0, sticky="w")
@@ -467,6 +478,8 @@ def run_gui(screenshot=None):
 
         def _ui_check_dirty(self):
             """Make it obvious whether the shown result matches the current settings."""
+            key = next((k for k, v in FACE_LOOKS.items() if v[0] == self.look_menu.get()), None)
+            self.look_hint.configure(text=LOOK_HINTS.get(key, ""))
             if self.working:
                 return
             if self.result is not None and self.sources and self._ui_options() != self.result_opts:

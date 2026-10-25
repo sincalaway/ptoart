@@ -26,7 +26,7 @@
    - **卡通头像**：最大那张脸，输出 512×512 头像；
    - **整张照片**：照片里每张脸都卡通化，再贴回原图，身体和背景不变；
    - **整图风格：宫崎骏 / 新海诚…**：整张图变动漫风，风景、全身照都能用。
-5. 点 **「选择照片」→「开始转换」**，满意后点 **「保存 PNG」** 选个位置保存。
+5. 点 **「选择照片」→「开始转换」**，满意后点 **「保存 PNG」** 选个位置保存。模式下拉框里写着「卡通头像 · 动漫脸（推荐）」这类名字，前半是模式、后半是画风，选哪个就用哪个。
 6. 想更清晰就打开 **「超分辨率增强」** 开关（会慢几秒）。
 
 ---
@@ -42,7 +42,7 @@
 | `ptoart-windows-x64.zip` | 必需 |
 | `ptoart_weights.pt` | 必需（头像、整张照片） |
 | `seg_model_384.pb` | 必需（头像、整张照片） |
-| `ptoart-styles.zip` | 可选（整图风格） |
+| `ptoart-styles.zip` | 强烈推荐（11 种风格，含 4 种头像画风） |
 | `ptoart-upscalers-realesrgan.zip` | 可选（更清晰） |
 
 **步骤：**
@@ -61,7 +61,8 @@
    └── weights\
        ├── ptoart_weights.pt
        ├── seg_model_384.pb
-       ├── styles\hayao.onnx、shinkai.onnx …
+       ├── styles\hayao.onnx、jp_face.onnx …（11 个）
+       └── torch\（人脸检测模型，已附带，勿删）
        └── upscale\anime.onnx、general.onnx
    ```
 

@@ -11,7 +11,7 @@
 | `ptoart-windows-x64.zip` | 必需 | 解压，例如到 `C:\ptoart` |
 | `ptoart_weights.pt` | 必需（卡通头像、整张照片） | `weights\` |
 | `seg_model_384.pb` | 必需（卡通头像、整张照片） | `weights\` |
-| `ptoart-styles.zip` | 可选（动漫风格） | 解压到 `weights\styles\` |
+| `ptoart-styles.zip` | 强烈推荐（11 种风格，含 4 种头像画风） | 解压到 `weights\styles\` |
 | `ptoart-upscalers-realesrgan.zip` | 可选（更清晰） | 解压到 `weights\upscale\` |
 
 右键 ZIP →「全部解压缩」。**请保留整个 `ptoart` 文件夹**（`ptoart.exe` 必须和 `_internal` 在一起），不要在压缩包里直接运行。放好后像这样：
@@ -23,7 +23,9 @@ ptoart\
 └── weights\
     ├── ptoart_weights.pt
     ├── seg_model_384.pb
-    ├── styles\hayao.onnx、shinkai.onnx …
+    ├── styles\hayao.onnx、jp_face.onnx …  （11 个风格/画风）
+    ├── upscale\anime.onnx …               （可选，超分）
+    └── torch\                              （人脸检测模型，已附带，勿删）
     └── upscale\anime.onnx、general.onnx
 ```
 
@@ -114,7 +116,7 @@ cd "C:\ptoart"
 .\ptoart.exe convert .\street.jpg .\output\street-hayao.jpg --style hayao --model-dir .\weights
 ```
 
-加 `--upscale anime` 用 Real-ESRGAN 超分放大，例如 `--size 1024 --upscale anime`。`--output photo` 把每张人脸卡通化后贴回原图（`--max-faces` 默认 10）。`--style` 需要把风格模型放到 `weights\styles\`：hayao（宫崎骏）、shinkai（新海诚）、paprika、celeba_distill、face_paint_512_v1、face_paint_512_v2，Release 中的 `ptoart-styles.zip` 已包含全部风格（仅限非商业用途）。
+加 `--upscale anime` 用 Real-ESRGAN 超分放大，例如 `--size 1024 --upscale anime`。`--output photo` 把每张人脸卡通化后贴回原图（`--max-faces` 默认 10）。`--style` 需要把风格模型放到 `weights\styles\`：hayao（宫崎骏）、shinkai（新海诚）、paprika、celeba_distill、face_paint_512_v1、face_paint_512_v2、hayao_v3、shinkai_v3、jp_face（日漫二次元）、ghibli_face（吉卜力人像）、portrait_sketch（黑白素描），Release 中的 `ptoart-styles.zip` 已包含全部风格（仅限非商业用途）。头像/整张照片加 `--style jp_face` 等即换画风，例如 `ptoart.exe convert 宝宝.jpg 宝宝头像.png --style face_paint_512_v2 --size 1024`。
 
 ONNX：准备 `ptoart_weights.onnx`，检查与转换都加 `--backend onnx`。普通照片仍需要 `seg_model_384.pb` 及人脸预处理：
 
