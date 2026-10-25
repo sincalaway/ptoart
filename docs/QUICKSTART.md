@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | `ptoart-android.apk` | 必需 | App 安装包 |
 | `ptoart_weights.onnx` | 必需（做卡通头像） | 卡通头像模型 |
-| `ptoart-styles.zip` | 可选 | 宫崎骏、新海诚等 6 种整图风格 |
+| `ptoart-styles.zip` | 可选 | 11 种风格，含动漫脸、日漫二次元、吉卜力人像、黑白素描 4 种头像画风（强烈推荐） |
 | `ptoart-upscalers-realesrgan.zip` | 可选 | 让结果更清晰的超分模型 |
 
 **步骤：**
