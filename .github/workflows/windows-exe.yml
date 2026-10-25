@@ -108,3 +108,23 @@ jobs:
           Frozen random-weight inference and synthetic segmentation passed; real-photo official-weight end-to-end inference is not validated.
           See README-WINDOWS.md in the package for commands.
           '@ >> $env:GITHUB_STEP_SUMMARY
+
+  screenshot:
+    # Publish the GUI screenshot to the ci-artifacts branch so it can be reviewed without
+    # downloading artifacts (development branch pushes only).
+    needs: build
+    if: github.ref == 'refs/heads/refactor/ptoart-20261023'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: gui-screenshot
+      - name: Push to ci-artifacts branch
+        run: |
+          mkdir pub && mv gui-screenshot.png pub/ && cd pub
+          git init -q -b ci-artifacts
+          git config user.name github-actions && git config user.email actions@github.com
+          git add gui-screenshot.png && git commit -qm "GUI screenshot for ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ci-artifacts
