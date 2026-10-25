@@ -104,6 +104,49 @@ class StyleBackend:
         self.session = None
 
 
+class UpscaleBackend:
+    """Real-ESRGAN-style ONNX upscaler: NCHW RGB in [0,1], returns ``scale`` times larger."""
+
+    def __init__(self, model_path, tile=256, pad=10):
+        require_file(model_path)
+        try:
+            import onnxruntime as ort
+        except ImportError as exc:
+            raise ModelError("Upscaling requires: pip install 'ptoart[onnx]'") from exc
+        try:
+            self.session = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
+            meta = self.session.get_modelmeta().custom_metadata_map
+            self.scale = int(meta.get("ptoart_scale", 4))
+            self.input_name = self.session.get_inputs()[0].name
+            self.output_name = self.session.get_outputs()[0].name
+        except Exception as exc:
+            raise ModelError(f"Unable to load upscaler {model_path}: {exc}") from exc
+        self.tile, self.pad = tile, pad
+
+    def run(self, image):
+        """Upscale float32 HWC RGB in [0,255]; tiles keep memory bounded on large images."""
+        h, w = image.shape[:2]
+        s, tile, pad = self.scale, self.tile, self.pad
+        out = np.empty((h * s, w * s, 3), dtype=np.float32)
+        src = image.astype(np.float32) / 255.0
+        for y in range(0, h, tile):
+            for x in range(0, w, tile):
+                y0, x0 = max(0, y - pad), max(0, x - pad)
+                y1, x1 = min(h, y + tile + pad), min(w, x + tile + pad)
+                patch = np.ascontiguousarray(src[y0:y1, x0:x1].transpose(2, 0, 1)[None])
+                result = self.session.run([self.output_name], {self.input_name: patch})[0][0]
+                if result.shape != (3, (y1 - y0) * s, (x1 - x0) * s):
+                    raise ModelError(f"Invalid upscaler output shape {result.shape}")
+                th, tw = min(tile, h - y), min(tile, w - x)
+                oy, ox = (y - y0) * s, (x - x0) * s
+                out[y * s:(y + th) * s, x * s:(x + tw) * s] = \
+                    result[:, oy:oy + th * s, ox:ox + tw * s].transpose(1, 2, 0)
+        return np.clip(out, 0, 1) * 255.0
+
+    def close(self):
+        self.session = None
+
+
 def create_backend(config):
     return {"torch": TorchBackend, "onnx": OnnxBackend}[config.backend](config)
 

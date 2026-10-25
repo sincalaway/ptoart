@@ -16,7 +16,7 @@
 
 ## 2. 准备权重和照片
 
-权重不在包内，也不会在构建时下载。按[模型准备说明](https://github.com/sincalaway/ptoart/blob/refactor/ptoart-20261023/docs/MODELS.md)取得可信模型，推荐从[光鸭云盘模型分享](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)下载。包内也附有 `MODELS.md`。
+权重不在 EXE 包内，但都附在同一个 [Release](https://github.com/sincalaway/ptoart/releases/latest) 的 Assets 里：`photo2cartoon_weights.pt`、`seg_model_384.pb`（必需），`photo2cartoon_weights.onnx`（可选），`ptoart-styles-animeganv2.zip`（解压到 `weights\styles\`）、`ptoart-upscalers-realesrgan.zip`（解压到 `weights\upscale\`）。包内也附有 `MODELS.md`。
 
 默认 Torch 后端处理普通照片时，将这两个模型放入 `weights`，再准备自己的测试照片：
 
@@ -91,7 +91,7 @@ cd "C:\ptoart"
 .\ptoart.exe convert .\street.jpg .\output\street-hayao.jpg --style hayao --model-dir .\weights
 ```
 
-`--output photo` 把每张人脸卡通化后贴回原图（`--max-faces` 默认 10）。`--style` 需要把风格模型放到 `weights\styles\`：hayao（宫崎骏）、shinkai（新海诚）、paprika、celeba_distill、face_paint_512_v1、face_paint_512_v2，Release 中的 `ptoart-styles-animeganv2.zip` 已包含全部风格（仅限非商业用途）。
+加 `--upscale anime` 用 Real-ESRGAN 超分放大，例如 `--size 1024 --upscale anime`。`--output photo` 把每张人脸卡通化后贴回原图（`--max-faces` 默认 10）。`--style` 需要把风格模型放到 `weights\styles\`：hayao（宫崎骏）、shinkai（新海诚）、paprika、celeba_distill、face_paint_512_v1、face_paint_512_v2，Release 中的 `ptoart-styles-animeganv2.zip` 已包含全部风格（仅限非商业用途）。
 
 ONNX：准备 `photo2cartoon_weights.onnx`，检查与转换都加 `--backend onnx`。普通照片仍需要 `seg_model_384.pb` 及人脸预处理：
 

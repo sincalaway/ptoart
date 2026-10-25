@@ -65,3 +65,39 @@ def test_bad_style_output_shape_raises(tmp_path):
     with ArtPipeline(ArtConfig(output="style", style="s", model_dir=tmp_path), backend=Bad()) as p:
         with pytest.raises(ModelError):
             p.convert(np.zeros((40, 40, 3), dtype=np.uint8))
+
+
+class FakeUpscaler:
+    scale = 4
+
+    def __init__(self):
+        self.calls = []
+
+    def run(self, image):
+        self.calls.append(image.shape)
+        return np.repeat(np.repeat(image, 4, axis=0), 4, axis=1)
+
+
+def test_face_size_uses_upscaler_when_enlarging():
+    from tests.test_photo_output import ConstantBackend, FakeMultiFace
+    from utils.preprocess import FaceRegion
+    up = FakeUpscaler()
+    rgba = np.full((600, 600, 4), 255, dtype=np.uint8)
+    with ArtPipeline(ArtConfig(size=768), backend=ConstantBackend(0.0), upscaler=up,
+                     preprocessor=FakeMultiFace([FaceRegion(rgba, np.eye(2, 3))])) as p:
+        out = p.convert(np.zeros((700, 700, 3), dtype=np.uint8))
+    assert out.shape == (768, 768, 3) and up.calls == [(256, 256, 3)]
+
+
+def test_style_uses_upscaler_only_when_downscaled(tmp_path):
+    up = FakeUpscaler()
+    cfg = ArtConfig(output="style", style="s", model_dir=tmp_path, style_max_side=256)
+    with ArtPipeline(cfg, backend=Invert(), upscaler=up) as p:
+        assert p.convert(np.zeros((512, 512, 3), dtype=np.uint8)).shape == (512, 512, 3)
+        p.convert(np.zeros((128, 128, 3), dtype=np.uint8))
+    assert up.calls == [(256, 256, 3)]
+
+
+def test_upscale_name_resolution(tmp_path):
+    assert ArtConfig(upscale="anime", model_dir=tmp_path).upscale == \
+        (tmp_path / "upscale" / "anime.onnx").resolve()

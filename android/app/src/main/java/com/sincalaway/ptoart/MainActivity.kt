@@ -30,6 +30,8 @@ class MainActivity : AppCompatActivity() {
     private var cartoonizer: Cartoonizer? = null
     private var styleModel: Pair<File, StyleModel>? = null
     private val modelFile by lazy { File(filesDir, "photo2cartoon_weights.onnx") }
+    private val upscalerFile by lazy { File(filesDir, "upscaler.onnx") }
+    private var upscaler: Upscaler? = null
     private val styleDir by lazy { File(filesDir, "styles").apply { mkdirs() } }
 
     /** What the user can produce: face modes need photo2cartoon, styles need their own file. */
@@ -63,6 +65,12 @@ class MainActivity : AppCompatActivity() {
                                 cartoonizer?.close(); cartoonizer = null
                                 check(tmp.renameTo(modelFile)) { "无法保存模型" }
                                 "已导入卡通头像模型"
+                            }
+                            ModelKind.UPSCALER -> {
+                                cartoonizer?.upscaler = null
+                                upscaler?.close(); upscaler = null
+                                check(tmp.renameTo(upscalerFile)) { "无法保存模型" }
+                                "已导入超分辨率模型"
                             }
                             ModelKind.STYLE -> {
                                 val stem = name.substringBeforeLast('.').ifBlank { "style" }
@@ -145,10 +153,12 @@ class MainActivity : AppCompatActivity() {
         val styles = modes.count { it is Mode.Style }
         ui.modelState.text = when {
             modes.isEmpty() -> getString(R.string.model_missing)
-            else -> getString(R.string.model_ready_fmt, if (modelFile.isFile) "已就绪" else "未导入", styles)
+            else -> getString(R.string.model_ready_fmt, if (modelFile.isFile) "已就绪" else "未导入", styles,
+                if (upscalerFile.isFile) "已就绪" else "未导入")
         }
         ui.mode.visibility = if (modes.isEmpty()) View.GONE else View.VISIBLE
         ui.transparent.visibility = if (currentMode is Mode.Face) View.VISIBLE else View.GONE
+        ui.superRes.visibility = if (upscalerFile.isFile && currentMode !is Mode.Style) View.VISIBLE else View.GONE
         ui.convert.isEnabled = currentMode != null && photo != null
     }
 
@@ -157,10 +167,16 @@ class MainActivity : AppCompatActivity() {
         val mode = currentMode ?: return
         val strength = ui.strength.progress / 100f
         val transparent = ui.transparent.isChecked
+        val superRes = ui.superRes.isChecked && upscalerFile.isFile
         lifecycleScope.launch {
             busy(true, "正在转换…")
             val out = withContext(Dispatchers.Default) {
                 runCatching {
+                    if (mode !is Mode.Style) {
+                        faceModel().upscaler = if (superRes) {
+                            upscaler ?: Upscaler(upscalerFile).also { upscaler = it }
+                        } else null
+                    }
                     when (mode) {
                         is Mode.Face -> faceModel().convertFace(src, strength, if (transparent) null else Color.WHITE)
                         is Mode.Photo -> faceModel().convertPhoto(src, strength)
@@ -226,6 +242,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         cartoonizer?.close()
         styleModel?.second?.close()
+        upscaler?.close()
         super.onDestroy()
     }
 }

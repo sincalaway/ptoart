@@ -2,7 +2,7 @@
 
 将人像照片转换为卡通头像的命令行工具，基于 [minivision-ai/photo2cartoon](https://github.com/minivision-ai/photo2cartoon) 重构。支持 Windows 便携 EXE、Python CLI 和 Python API，以及单图、批量、透明背景和强度混合。
 
-[English](README_EN.md) · [Windows 便携版说明](packaging/WINDOWS-README.md) · [模型准备](docs/MODELS.md) · [模型下载（光鸭云盘）](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)
+[English](README_EN.md) · [Windows 便携版说明](packaging/WINDOWS-README.md) · [模型准备](docs/MODELS.md) · [模型下载（Release）](https://github.com/sincalaway/ptoart/releases/latest)
 
 > **当前为 0.2.0 工程预览版，不是开箱即用的完整模型包。** Windows 自动构建和打包自检已通过，但**官方模型权重不随包提供，真实照片的完整检测 → 分割 → 卡通出图尚未验证**。请先准备可信权重再尝试；构建成功、`doctor` 通过或随机权重自检成功，都不等于真实出图质量已验收。
 
@@ -18,7 +18,7 @@
 
 整图风格可选：`hayao`（宫崎骏）、`shinkai`（新海诚）、`paprika`（今敏）、`celeba_distill`、`face_paint_512_v1`、`face_paint_512_v2`。运行 `python tools/export_styles.py -o weights/styles` 会自动下载并转换全部风格（每个约 8.7 MB）。**AnimeGANv2 权重仅限非商业用途。**
 
-photo2cartoon 生成器只在 256×256 推理，更大的 `--size` 是高质量放大（Lanczos + 轻度锐化，透明边缘和强度混合使用原分辨率），不是生成更多细节。重构未消除上游训练数据的人群偏差。
+photo2cartoon 生成器只在 256×256 推理。更大的 `--size` 默认用 Lanczos + 轻度锐化放大；加 `--upscale anime` 则用 Real-ESRGAN 超分，能补出清晰线条。透明边缘和强度混合始终使用原分辨率。重构未消除上游训练数据的人群偏差。
 
 | 你想怎么用 | 从哪里开始 |
 | --- | --- |
@@ -27,11 +27,41 @@ photo2cartoon 生成器只在 256×256 推理，更大的 `--size` 是高质量�
 | 在自己的 Python 程序里调用 | 「Python API」 |
 | 安卓手机上点选照片生成头像 | 「安卓 App」 |
 
+## 模型下载（全部在 Release 里）
+
+所有运行所需的模型都附在 [Releases](https://github.com/sincalaway/ptoart/releases/latest) 的 Assets 中，下载即可用，无需自己转换：
+
+| 文件 | 大小 | 用途 | Windows 放到 | 安卓 |
+| --- | --- | --- | --- | --- |
+| `photo2cartoon_weights.pt` | 约 144 MB | 卡通头像生成器（Torch，Windows 默认后端） | `weights\` | 不需要 |
+| `seg_model_384.pb` | 约 32 MB | 人像分割（Windows 头像/整张照片模式必需） | `weights\` | 不需要（用内置 ML Kit） |
+| `photo2cartoon_weights.onnx` | 约 18 MB | 卡通头像生成器（ONNX，安卓必需；Windows 加 `--backend onnx` 时用） | `weights\`（可选） | 导入 |
+| `ptoart-styles-animeganv2.zip` | 约 50 MB | 6 种整图风格：宫崎骏、新海诚、Paprika、CelebA 蒸馏、Face Paint v1/v2 | 解压到 `weights\styles\` | 解压后导入想要的 |
+| `ptoart-upscalers-realesrgan.zip` | 约 7 MB | 超分辨率放大：`anime`（卡通，快）、`general`（通用） | 解压到 `weights\upscale\` | 导入一个（推荐 anime） |
+
+目录示例：
+
+```text
+C:\ptoart\
+├── ptoart.exe
+├── _internal\
+└── weights\
+    ├── photo2cartoon_weights.pt
+    ├── seg_model_384.pb
+    ├── photo2cartoon_weights.onnx      # 可选
+    ├── styles\hayao.onnx …            # 整图风格
+    └── upscale\anime.onnx、general.onnx # 超分
+```
+
+只想用整图风格时，只需要 `styles` 里的模型，不需要 `.pt`/`.pb`。训练用的 `model_mobilefacenet.pth` 和 `cartoon_data` 训练图片不放进 Release，普通使用都不需要（需要训练可从[光鸭云盘](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)或[上游资源包](docs/MODELS.md)获取）。
+
+许可：photo2cartoon 权重来自 [minivision-ai/photo2cartoon](https://github.com/minivision-ai/photo2cartoon)（MIT）；超分模型来自 [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)（BSD-3）；**AnimeGANv2 风格权重仅限非商业用途**。
+
 ## 安卓 App
 
 1. 在 [Releases](https://github.com/sincalaway/ptoart/releases) 下载 `ptoart-android.apk` 安装（Android 7.0+，需允许安装未知来源应用；APK 为调试签名）。
-2. 从[光鸭云盘模型分享](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)下载 **`photo2cartoon_weights.onnx`**（也可用 `python tools/export_onnx.py photo2cartoon_weights.pt` 自行由 Torch 权重转换），把它保存到手机，在 App 中点「导入模型」选中它（模型不随 App 分发）。
-3. 想要整图风格，再导入 `hayao.onnx` 等风格模型（可多选，App 自动识别模型类型；用 `tools/export_styles.py` 生成）。
+2. 在同一 Release 下载 **`photo2cartoon_weights.onnx`** 存到手机，在 App 中点「导入模型」选中它（模型不随 App 分发）。
+3. 想要整图风格或更清晰的头像，把 `ptoart-styles-animeganv2.zip`、`ptoart-upscalers-realesrgan.zip` 解压后，在「导入模型」里多选导入（App 自动识别模型类型）。导入超分模型后会出现「超分辨率增强」开关。
 4. 选照片，在下拉框选模式：「卡通头像」（512×512，可透明背景）、「整张照片」（所有人脸卡通化贴回原图）或「整图风格：宫崎骏/新海诚/…」，调强度后转换并保存 PNG。
 
 安卓版全程离线：人脸检测与人像分割使用打包进 APK 的 Google ML Kit 模型，卡通生成使用 ONNX Runtime。裁剪与对齐策略与桌面版近似但不完全一致，效果可能略有差异。
@@ -50,7 +80,7 @@ photo2cartoon 生成器只在 256×256 推理，更大的 `--size` 是高质量�
 
 ### 2. 准备模型和照片
 
-从[光鸭云盘模型分享](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)下载模型（其他来源见[模型准备说明](docs/MODELS.md)）。普通照片使用默认 Torch 后端时，需要以下两个真实模型文件，放入 EXE 旁的 `weights` 文件夹：
+从 [Release](https://github.com/sincalaway/ptoart/releases/latest) 下载模型（清单见上方「模型下载」）。普通照片使用默认 Torch 后端时，至少需要以下两个模型文件，放入 EXE 旁的 `weights` 文件夹：
 
 ```text
 C:\ptoart\
@@ -120,6 +150,12 @@ cd "C:\ptoart"
 ```
 
 整图风格只依赖 ONNX Runtime，不需要人脸模型；`--style-max-side`（默认 1536）控制推理分辨率，越大越清晰也越慢。
+
+任何模式加 `--upscale anime`（或 `general`）都会用 Real-ESRGAN 超分代替普通插值放大：头像 `--size` 大于 256、整张照片里的大脸、以及被缩小推理的整图风格都会变清晰。例如：
+
+```powershell
+.\ptoart.exe convert .\portrait.jpg .\output\avatar-hd.png --size 1024 --upscale anime --model-dir .\weights --device cpu
+```
 
 ### 5. 批量处理文件夹
 

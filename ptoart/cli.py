@@ -40,6 +40,8 @@ def add_options(parser):
                              "or style when --style is given)")
     parser.add_argument("--style", help="Style name in <model-dir>/styles (hayao, shinkai, paprika, "
                                         "celeba_distill, face_paint_512_v1, face_paint_512_v2) or a .onnx path")
+    parser.add_argument("--upscale", help="Super-resolution model in <model-dir>/upscale (anime, general) "
+                                          "or a .onnx path; used when output is larger than the model's")
     parser.add_argument("--style-max-side", type=int, default=1536,
                         help="Longest side used for style inference; larger is sharper but slower")
     parser.add_argument("--size", type=int, default=256, help="Avatar size in pixels for --output face (64-2048)")
@@ -49,7 +51,7 @@ def add_options(parser):
 def config_from(args):
     keys = ("backend", "device", "model_dir", "weights", "segmentation", "aligned",
             "detector", "background", "strength", "max_pixels", "output", "size", "max_faces",
-            "style", "style_max_side")
+            "style", "style_max_side", "upscale")
     values = {key: getattr(args, key) for key in keys}
     if values["output"] is None:
         values["output"] = "style" if values["style"] else "face"
@@ -60,6 +62,8 @@ def doctor(config):
     if config.output == "style":
         dependencies = {p: importlib.util.find_spec(p) is not None for p in ("numpy", "cv2", "PIL", "onnxruntime")}
         models = {str(config.style): config.style.is_file()}
+        if config.upscale:
+            models[str(config.upscale)] = config.upscale.is_file()
         return {"version": __version__, "output": "style", "dependencies": dependencies, "models": models,
                 "ready": all(dependencies.values()) and all(models.values()),
                 "note": "Presence checks only; not a model-load or inference validation."}
@@ -72,6 +76,9 @@ def doctor(config):
     weights = {str(config.weights): config.weights.is_file()}
     if not config.aligned:
         weights[str(config.segmentation)] = config.segmentation.is_file()
+    if config.upscale:
+        weights[str(config.upscale)] = config.upscale.is_file()
+        dependencies.setdefault("onnxruntime", importlib.util.find_spec("onnxruntime") is not None)
     return {"version": __version__, "backend": config.backend, "device": config.device,
             "dependencies": dependencies, "models": weights,
             "ready": all(dependencies.values()) and all(weights.values()),

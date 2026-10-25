@@ -4,7 +4,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from .backends import StyleBackend, create_backend, require_file, validate_output
+from .backends import StyleBackend, UpscaleBackend, create_backend, require_file, validate_output
 from .config import ArtConfig
 from .errors import ImageError, ModelError, NoFaceError, PtoartError
 from .io import read_image, write_image
@@ -17,12 +17,15 @@ class ArtPipeline:
     only for already aligned, tightly cropped square portraits, never full photos.
     """
 
-    def __init__(self, config=None, *, backend=None, preprocessor=None):
+    def __init__(self, config=None, *, backend=None, preprocessor=None, upscaler=None):
         self.config = config or ArtConfig()
         self.backend = None
         self.preprocessor = preprocessor
+        self.upscaler = upscaler
         self.closed = False
         try:
+            if self.upscaler is None and self.config.upscale is not None:
+                self.upscaler = UpscaleBackend(self.config.upscale)
             if self.config.output == "style":
                 self.backend = backend if backend is not None else StyleBackend(self.config.style)
                 return
@@ -103,16 +106,32 @@ class ArtPipeline:
             raise ModelError(f"Inference failed: {exc}") from exc
         return (output[0].transpose(1, 2, 0) + 1) * 127.5
 
-    @staticmethod
-    def _upscale(cartoon, size):
-        """Resize the 256px cartoon; when enlarging, sharpen lightly to offset blur."""
+    def _upscale(self, cartoon, size):
+        """Resize the 256px cartoon to ``size``.
+
+        With an upscaler model (``upscale``), enlarge with super-resolution first;
+        otherwise use Lanczos plus light sharpening.
+        """
         if size == cartoon.shape[0]:
             return cartoon
         if size < cartoon.shape[0]:
             return cv2.resize(cartoon, (size, size), interpolation=cv2.INTER_AREA)
+        if self.upscaler is not None:
+            big = self._super_resolve(cartoon)
+            interpolation = cv2.INTER_AREA if big.shape[0] >= size else cv2.INTER_LANCZOS4
+            return cv2.resize(big, (size, size), interpolation=interpolation)
         big = cv2.resize(cartoon, (size, size), interpolation=cv2.INTER_LANCZOS4)
         blur = cv2.GaussianBlur(big, (0, 0), sigmaX=max(1.0, size / 256))
         return cv2.addWeighted(big, 1.4, blur, -0.4, 0)
+
+    def _super_resolve(self, image):
+        try:
+            return np.asarray(self.upscaler.run(np.clip(image, 0, 255).astype(np.float32)),
+                              dtype=np.float32)
+        except ModelError:
+            raise
+        except Exception as exc:
+            raise ModelError(f"Upscaling failed: {exc}") from exc
 
     def _compose_face(self, rgba, cartoon):
         size = self.config.size
@@ -173,7 +192,10 @@ class ArtPipeline:
             raise ModelError(f"Invalid style output; expected {tensor.shape}, got {output.shape}")
         styled = (output[0].transpose(1, 2, 0) + 1) * 127.5
         if (h, w) != (height, width):
-            styled = cv2.resize(styled, (width, height), interpolation=cv2.INTER_CUBIC)
+            if self.upscaler is not None and scale < 1:
+                styled = self._super_resolve(styled)
+            interpolation = cv2.INTER_AREA if styled.shape[0] > height else cv2.INTER_CUBIC
+            styled = cv2.resize(styled, (width, height), interpolation=interpolation)
         source = image.astype(np.float32)
         blended = styled * self.config.strength + source * (1 - self.config.strength)
         return np.clip(blended, 0, 255).astype(np.uint8)
@@ -204,8 +226,12 @@ class ArtPipeline:
             if self.preprocessor is not None and hasattr(self.preprocessor, "close"):
                 self.preprocessor.close()
         finally:
-            if self.backend is not None and hasattr(self.backend, "close"):
-                self.backend.close()
+            try:
+                if self.backend is not None and hasattr(self.backend, "close"):
+                    self.backend.close()
+            finally:
+                if self.upscaler is not None and hasattr(self.upscaler, "close"):
+                    self.upscaler.close()
 
     def __enter__(self):
         return self

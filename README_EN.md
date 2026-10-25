@@ -2,7 +2,7 @@
 
 A maintainable refactor of [photo2cartoon](https://github.com/minivision-ai/photo2cartoon), preserving its generator and training algorithms while adding a shared Torch/ONNX pipeline, batch processing, structured errors, background/alpha output, intensity blending and diagnostics.
 
-[Complete Chinese tutorial](README.md) · [Windows package guide (Chinese)](packaging/WINDOWS-README.md) · [Model setup](docs/MODELS.md) · [Model download (Guangya Pan)](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)
+[Complete Chinese tutorial](README.md) · [Windows package guide (Chinese)](packaging/WINDOWS-README.md) · [Model setup](docs/MODELS.md) · [Model downloads (Release)](https://github.com/sincalaway/ptoart/releases/latest)
 
 > **Version 0.2.0 is an engineering preview. Official weights are not bundled.** Windows packaging and frozen-runtime smoke tests passed, but full real-photo inference with official weights has not been validated. A successful build, `doctor` result or random-weight test is not evidence of visual quality.
 
@@ -13,7 +13,7 @@ For Windows 10/11 x64, CPU only; no Python installation required. This is a **co
 1. Open [Windows EXE workflow runs](https://github.com/sincalaway/ptoart/actions/workflows/windows-exe.yml) and select a successful run on `refactor/ptoart-20261023`.
 2. Download **ptoart-windows-x64-cpu** under **Artifacts** (web downloads typically require GitHub sign-in). Extract the downloaded ZIP, then extract the inner `ptoart-windows-x64-cpu.zip`.
 3. Keep the entire `ptoart` folder, including `ptoart.exe` and `_internal`. Do not run from inside the ZIP or copy only the executable.
-4. Download the weights from the [Guangya Pan share](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9) (other sources: [model setup](docs/MODELS.md)). The share also includes `photo2cartoon_weights.onnx` for the Android app; you can regenerate it with `python tools/export_onnx.py photo2cartoon_weights.pt`. Put `photo2cartoon_weights.pt` and `seg_model_384.pb` in a `weights` folder beside the EXE; the bundled `weights/README.txt` is not a model.
+4. Download the models from the same [Release](https://github.com/sincalaway/ptoart/releases/latest): `photo2cartoon_weights.pt` and `seg_model_384.pb` go in a `weights` folder beside the EXE (required for avatar/photo modes). Optional: `photo2cartoon_weights.onnx` (Android app, or `--backend onnx`), `ptoart-styles-animeganv2.zip` → `weights\styles\`, `ptoart-upscalers-realesrgan.zip` → `weights\upscale\`. The bundled `weights/README.txt` is not a model. Licences: photo2cartoon MIT, Real-ESRGAN BSD-3, AnimeGANv2 non-commercial only.
 5. Put your photo at `portrait.jpg`, open PowerShell and change to the EXE folder (replace the example location):
 
 ```powershell
@@ -37,6 +37,7 @@ Artifacts are retained for 30 days. A known successful historical build is [run 
 - `--output face` (default) returns the largest face as a square avatar; `--size` (64–2048, default 256) upscales the 256px generator output with Lanczos + light sharpening while alpha and strength blending use the full-resolution crop.
 - `--output photo` keeps the original photo size and blends every detected face (`--max-faces`, default 10) back in place with feathered edges; bodies and backgrounds stay photographic.
 - `--style NAME` (implies `--output style`) applies an AnimeGANv2 whole-image style from `<model-dir>/styles/NAME.onnx`: `hayao`, `shinkai`, `paprika`, `celeba_distill`, `face_paint_512_v1`, `face_paint_512_v2`. Create them with `python tools/export_styles.py -o weights/styles`. AnimeGANv2 weights are for **non-commercial use only**. `--style-max-side` (default 1536) sets the inference resolution.
+- `--upscale anime|general` uses a Real-ESRGAN compact x4 model from `<model-dir>/upscale/` instead of plain interpolation whenever output is enlarged (avatar `--size` > 256, large pasted faces, downscaled style inference).
 - `--background transparent` requires PNG, WebP or TIFF output. Default background is white. Segmentation quality determines alpha edges.
 - `--strength 0.7` blends 70% model output with 30% original cropped portrait; it is not learned style control. Range: 0–1, default 1.
 - `--backend onnx` requires `photo2cartoon_weights.onnx`. Normal-photo preprocessing still needs segmentation, face-alignment/Torch and TensorFlow; this is not an ONNX-only pipeline.

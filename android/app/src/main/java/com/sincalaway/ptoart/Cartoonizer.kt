@@ -30,7 +30,7 @@ import kotlin.math.roundToInt
 class NoFaceException : Exception("未检测到人脸，请使用清晰的正面照片")
 
 /** Which kind of ONNX file the user imported. */
-enum class ModelKind { PHOTO2CARTOON, STYLE }
+enum class ModelKind { PHOTO2CARTOON, STYLE, UPSCALER }
 
 object ModelInspector {
     /** photo2cartoon has a fixed [1,3,256,256] input; AnimeGANv2 styles have dynamic H and W. */
@@ -41,6 +41,7 @@ object ModelInspector {
             val info = s.inputInfo.values.first().info as ai.onnxruntime.TensorInfo
             val shape = info.shape
             require(shape.size == 4 && shape[1] == 3L) { "不支持的模型输入形状" }
+            if (s.metadata.customMetadata["ptoart_kind"] == "upscaler") return ModelKind.UPSCALER
             return if (shape[2] == 256L && shape[3] == 256L) ModelKind.PHOTO2CARTOON else ModelKind.STYLE
         }
     }
@@ -48,6 +49,45 @@ object ModelInspector {
 
 private fun sessionOptions() = OrtSession.SessionOptions().apply {
     setIntraOpNumThreads(max(1, Runtime.getRuntime().availableProcessors() / 2))
+}
+
+/**
+ * Real-ESRGAN compact x4 upscaler (tools/export_upscalers.py): NCHW RGB in [0,1], 4x output.
+ */
+class Upscaler(modelFile: File) : Closeable {
+    private val env = OrtEnvironment.getEnvironment()
+    private val session = env.createSession(modelFile.absolutePath, sessionOptions())
+    private val inputName = session.inputNames.first()
+    private val outputName = session.outputNames.first()
+    val scale = session.metadata.customMetadata["ptoart_scale"]?.toIntOrNull() ?: 4
+
+    /** Upscales a small bitmap (e.g. the 256px cartoon) in one pass. */
+    fun upscale(src: Bitmap): Bitmap {
+        val w = src.width; val h = src.height; val plane = w * h
+        val px = IntArray(plane).also { src.getPixels(it, 0, w, 0, 0, w, h) }
+        val input = FloatBuffer.allocate(3 * plane)
+        for (i in 0 until plane) {
+            val c = px[i]
+            input.put(i, Color.red(c) / 255f)
+            input.put(plane + i, Color.green(c) / 255f)
+            input.put(2 * plane + i, Color.blue(c) / 255f)
+        }
+        val ow = w * scale; val oh = h * scale; val outPlane = ow * oh
+        val out = OnnxTensor.createTensor(env, input, longArrayOf(1, 3, h.toLong(), w.toLong())).use { t ->
+            session.run(mapOf(inputName to t)).use { r ->
+                val o = (r.get(outputName).get() as OnnxTensor).floatBuffer
+                FloatArray(o.remaining()).also { o.get(it) }
+            }
+        }
+        require(out.size == 3 * outPlane) { "超分模型输出尺寸异常: ${out.size}" }
+        val result = IntArray(outPlane) { i ->
+            fun v(k: Int) = (out[k * outPlane + i] * 255f).roundToInt().coerceIn(0, 255)
+            Color.rgb(v(0), v(1), v(2))
+        }
+        return Bitmap.createBitmap(result, ow, oh, Bitmap.Config.ARGB_8888)
+    }
+
+    override fun close() = session.close()
 }
 
 /**
@@ -103,6 +143,9 @@ class StyleModel(modelFile: File) : Closeable {
  * photo2cartoon ONNX generator [1,3,256,256] in [-1,1].
  */
 class Cartoonizer(modelFile: File) : Closeable {
+    /** Optional super-resolution for enlarging the 256px cartoon; owned by the caller. */
+    var upscaler: Upscaler? = null
+
     private val env = OrtEnvironment.getEnvironment()
     private val session: OrtSession
     private val inputName: String
@@ -285,8 +328,10 @@ class Cartoonizer(modelFile: File) : Closeable {
             Color.rgb(v(0), v(1), v(2))
         }
         val cartoon256 = Bitmap.createBitmap(cartoonPx, n, n, Bitmap.Config.ARGB_8888)
-        val cartoon = Bitmap.createScaledBitmap(cartoon256, outSize, outSize, true)
-        if (cartoon !== cartoon256) cartoon256.recycle()
+        val sr = upscaler
+        val base = if (sr != null && outSize > n) sr.upscale(cartoon256).also { cartoon256.recycle() } else cartoon256
+        val cartoon = Bitmap.createScaledBitmap(base, outSize, outSize, true)
+        if (cartoon !== base) base.recycle()
         val source = Bitmap.createScaledBitmap(face, outSize, outSize, true)
 
         val total = outSize * outSize

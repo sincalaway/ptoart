@@ -1,10 +1,10 @@
 # 模型准备
 
-ptoart 不包含、不自动下载，也不重新分发上游模型权重。不要把随机权重测试生成的文件当作可用模型。
+从 v0.3.0 起，所有推理所需模型都附在 [GitHub Release](https://github.com/sincalaway/ptoart/releases/latest) 中（由发布工作流从上游资源包下载、转换并校验后上传，附 `SHA256SUMS-all.txt`）。EXE/APK 本身不含模型。不要把随机权重测试生成的文件当作可用模型。
 
 ## 到哪里取得
 
-**推荐（国内直连）：[光鸭云盘 · ptoart 模型](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)**，由仓库维护者分享，包含 Windows/桌面版所需的 `photo2cartoon_weights.pt`、`seg_model_384.pb`，安卓 App 所需的 `photo2cartoon_weights.onnx`，以及仅训练用的 `model_mobilefacenet.pth`。下载后按下表放置文件；建议用 `sha256sum`/`Get-FileHash` 自行留档校验。
+**备用（国内直连）：[光鸭云盘 · ptoart 模型](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)**，由仓库维护者分享，包含 Windows/桌面版所需的 `photo2cartoon_weights.pt`、`seg_model_384.pb`，安卓 App 所需的 `photo2cartoon_weights.onnx`，以及仅训练用的 `model_mobilefacenet.pth`。下载后按下表放置文件；建议用 `sha256sum`/`Get-FileHash` 自行留档校验。
 
 其他来源：
 
@@ -46,6 +46,14 @@ python tools/export_styles.py hayao paprika -o weights/styles
 | `paprika`、`celeba_distill`、`face_paint_512_v1`、`face_paint_512_v2` | [animegan2-pytorch](https://github.com/bryandlee/animegan2-pytorch)（MIT） |
 
 导出的 ONNX 输入 `input`、输出 `output`，NCHW RGB，取值 [-1,1]，高宽可变（建议 4 的倍数）；脚本会在两种尺寸下与 PyTorch 比对。`face_paint_*` 针对人像训练，对风景效果一般。**AnimeGANv2 权重仅限非商业用途**，商用需联系原作者授权。
+
+## 超分辨率模型（Real-ESRGAN）
+
+```bash
+python tools/export_upscalers.py -o weights/upscale      # anime.onnx、general.onnx
+```
+
+`anime` 为 realesr-animevideov3（约 2.5 MB，适合卡通输出），`general` 为 realesr-general-x4v3（约 4.9 MB）。输入 [0,1] NCHW RGB，输出 4 倍尺寸；文件带 `ptoart_kind=upscaler` 元数据，安卓据此识别。桌面端按 256 像素分块推理，大图内存可控。BSD-3 许可。
 
 ## 安全与完整性
 

@@ -18,17 +18,26 @@ jobs:
     uses: ./.github/workflows/windows-exe.yml
   android:
     uses: ./.github/workflows/android-apk.yml
-  styles:
+  models:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Export AnimeGANv2 styles to ONNX
+      - name: Install export tools
         run: |
           pip install --index-url https://download.pytorch.org/whl/cpu torch
-          pip install tensorflow-cpu onnx onnxscript onnxruntime numpy
+          pip install tensorflow-cpu onnx onnxscript onnxruntime numpy gdown
+      - name: photo2cartoon weights (upstream resource pack, MIT)
+        run: |
+          mkdir -p models-out
+          # Upstream resource pack listed in docs/MODELS.md (minivision-ai/photo2cartoon).
+          gdown "https://drive.google.com/uc?id=1lsQS8hOCquMFKJFhK_z-n03ixWGkjT2P" -O resources.zip
+          unzip -j resources.zip '*/photo2cartoon_weights.pt' '*/seg_model_384.pb' -d models-out
+          python tools/export_onnx.py models-out/photo2cartoon_weights.pt models-out/photo2cartoon_weights.onnx
+      - name: AnimeGANv2 styles (non-commercial)
+        run: |
           python tools/export_styles.py -o styles
           cat > styles/LICENSE-AnimeGANv2.txt <<'TXT'
           AnimeGANv2 style weights (hayao, shinkai: https://github.com/TachibanaYoshino/AnimeGANv2;
@@ -38,16 +47,25 @@ jobs:
           Converted to ONNX by tools/export_styles.py. Put these files in weights/styles (Windows)
           or import them in the Android app.
           TXT
-          cd styles && zip -9 ../ptoart-styles-animeganv2.zip *.onnx LICENSE-AnimeGANv2.txt
-          cd .. && sha256sum ptoart-styles-animeganv2.zip > SHA256SUMS-styles.txt
+          (cd styles && zip -9 ../models-out/ptoart-styles-animeganv2.zip *.onnx LICENSE-AnimeGANv2.txt)
+      - name: Real-ESRGAN upscalers (BSD-3)
+        run: |
+          python tools/export_upscalers.py -o upscale
+          cat > upscale/LICENSE-Real-ESRGAN.txt <<'TXT'
+          realesr-animevideov3 (anime.onnx) and realesr-general-x4v3 (general.onnx) from
+          https://github.com/xinntao/Real-ESRGAN, BSD 3-Clause License, Copyright (c) 2021, Xintao Wang.
+          Converted to ONNX by tools/export_upscalers.py. Put these files in weights/upscale (Windows)
+          or import one of them in the Android app.
+          TXT
+          (cd upscale && zip -9 ../models-out/ptoart-upscalers-realesrgan.zip *.onnx LICENSE-Real-ESRGAN.txt)
+      - name: Checksums
+        run: cd models-out && sha256sum * > ../SHA256SUMS-models.txt && mv ../SHA256SUMS-models.txt . && ls -la
       - uses: actions/upload-artifact@v4
         with:
-          name: ptoart-styles
-          path: |
-            ptoart-styles-animeganv2.zip
-            SHA256SUMS-styles.txt
+          name: ptoart-models
+          path: models-out/*
   publish:
-    needs: [windows, android, styles]
+    needs: [windows, android, models]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -70,6 +88,10 @@ jobs:
           files: |
             dist/ptoart-windows-x64-cpu.zip
             dist/ptoart-android.apk
+            dist/photo2cartoon_weights.pt
+            dist/photo2cartoon_weights.onnx
+            dist/seg_model_384.pb
             dist/ptoart-styles-animeganv2.zip
+            dist/ptoart-upscalers-realesrgan.zip
             dist/SHA256SUMS-all.txt
           fail_on_unmatched_files: true

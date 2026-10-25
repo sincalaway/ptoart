@@ -21,6 +21,7 @@ class ArtConfig:
     max_faces: int = 10
     style: str | None = None
     style_max_side: int = 1536
+    upscale: str | None = None
 
     def __post_init__(self):
         if self.backend not in {"torch", "onnx"}:
@@ -59,4 +60,9 @@ class ArtConfig:
             if candidate.suffix.lower() != ".onnx":
                 candidate = root / "styles" / f"{self.style}.onnx"
             object.__setattr__(self, "style", candidate.resolve())
+        if self.upscale:
+            candidate = Path(self.upscale).expanduser()
+            if candidate.suffix.lower() != ".onnx":
+                candidate = root / "upscale" / f"{self.upscale}.onnx"
+            object.__setattr__(self, "upscale", candidate.resolve())
         object.__setattr__(self, "segmentation", Path(self.segmentation or root / "seg_model_384.pb").expanduser().resolve())
