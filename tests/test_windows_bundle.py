@@ -39,7 +39,12 @@ def fake_artifacts(root):
     return models, dct
 
 
-@pytest.mark.parametrize("sep", ["\\", "/"])
+# The release step runs on Linux. On Windows, zipfile itself rewrites "\\" to "/" when writing,
+# so the backslash case (what Compress-Archive may produce) can only be reproduced off Windows.
+SEPARATORS = ["/"] if sys.platform == "win32" else ["\\", "/"]
+
+
+@pytest.mark.parametrize("sep", SEPARATORS)
 def test_every_model_lands_in_ptoart_weights(tmp_path, sep):
     app = tmp_path / "ptoart-windows-x64.zip"
     exe_build = ["ptoart/ptoart.exe", "ptoart/_internal/python311.dll", "ptoart/weights/README.txt",
