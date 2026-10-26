@@ -157,3 +157,6 @@ android/build/
 android/app/build/
 android/local.properties
 .dctnet-src/
+
+# Android: models copied in by CI for release builds
+android/app/src/main/assets/models/

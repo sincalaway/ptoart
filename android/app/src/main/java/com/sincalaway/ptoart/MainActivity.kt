@@ -27,22 +27,42 @@ class MainActivity : AppCompatActivity() {
     private lateinit var ui: ActivityMainBinding
     private var photo: Bitmap? = null
     private var result: Bitmap? = null
-    private var cartoonizer: Pair<File, Cartoonizer>? = null
-    private var styleModel: Pair<File, StyleModel>? = null
+    private var cartoonizer: Pair<ModelSource, Cartoonizer>? = null
+    private var styleModel: Pair<ModelSource, StyleModel>? = null
+    // Imported files (optional overrides of the bundled models of the same name).
     private val modelFile by lazy { File(filesDir, "ptoart_weights.onnx") }
     private val upscalerFile by lazy { File(filesDir, "upscaler.onnx") }
-    private var upscaler: Upscaler? = null
+    private var upscaler: Pair<ModelSource, Upscaler>? = null
     private val styleDir by lazy { File(filesDir, "styles").apply { mkdirs() } }
+
+    /**
+     * Models shipped in the APK under assets/models (release builds): keys "ptoart_weights",
+     * "styles/<stem>" and "upscale/<stem>". Empty in development builds without models.
+     */
+    private val bundled: Map<String, ModelSource> by lazy {
+        buildMap<String, ModelSource> {
+            for (dir in listOf("", "styles", "upscale")) {
+                val folder = if (dir.isEmpty()) "models" else "models/$dir"
+                val names = runCatching { assets.list(folder) }.getOrNull() ?: emptyArray()
+                for (name in names) {
+                    if (!name.endsWith(".onnx")) continue
+                    val key = (if (dir.isEmpty()) "" else "$dir/") + name.removeSuffix(".onnx")
+                    put(key, ModelSource.Bundled(assets, "$folder/$name"))
+                }
+            }
+        }
+    }
 
     /** What the user can produce: face modes need the avatar model, styles need their own file. */
     private sealed class Mode(val label: String) {
-        class Face(label: String, val file: File) : Mode(label)
-        class Photo(label: String, val file: File) : Mode(label)
-        class Style(label: String, val file: File) : Mode(label)
+        class Face(label: String, val model: ModelSource) : Mode(label)
+        class Photo(label: String, val model: ModelSource) : Mode(label)
+        class Style(label: String, val model: ModelSource) : Mode(label)
         override fun toString() = label
     }
     private var modes: List<Mode> = emptyList()
     private val currentMode get() = modes.getOrNull(ui.mode.selectedItemPosition)
+    private var upscaleChoices: List<Pair<String, ModelSource>> = emptyList()
 
     private val styleNames = mapOf(
         "hayao" to "宫崎骏", "shinkai" to "新海诚", "paprika" to "今敏 Paprika",
@@ -72,15 +92,16 @@ class MainActivity : AppCompatActivity() {
                             }
                             ModelKind.UPSCALER -> {
                                 cartoonizer?.second?.upscaler = null
-                                upscaler?.close(); upscaler = null
+                                upscaler?.second?.close(); upscaler = null
                                 check(tmp.renameTo(upscalerFile)) { "无法保存模型" }
                                 "已导入超分辨率模型"
                             }
                             ModelKind.STYLE -> {
                                 val stem = name.substringBeforeLast('.').ifBlank { "style" }
                                 val target = File(styleDir, "$stem.onnx")
-                                if (styleModel?.first == target) { styleModel?.second?.close(); styleModel = null }
-                                if (cartoonizer?.first == target) { cartoonizer?.second?.close(); cartoonizer = null }
+                                // Replaces an earlier import or overrides the bundled style of the same name.
+                                if (styleModel?.first?.stem == stem) { styleModel?.second?.close(); styleModel = null }
+                                if (cartoonizer?.first?.stem == stem) { cartoonizer?.second?.close(); cartoonizer = null }
                                 check(tmp.renameTo(target)) { "无法保存模型" }
                                 "已导入风格：${styleNames[stem] ?: stem}"
                             }
@@ -126,6 +147,7 @@ class MainActivity : AppCompatActivity() {
             override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) = refreshModelState(rebuild = false)
             override fun onNothingSelected(p: AdapterView<*>?) {}
         }
+        ui.superRes.setOnCheckedChangeListener { _, _ -> refreshModelState(rebuild = false) }
         ui.pick.setOnClickListener { pickPhoto.launch("image/*") }
         ui.convert.setOnClickListener { convert() }
         ui.save.setOnClickListener { saveResult.launch("ptoart-${System.currentTimeMillis()}.png") }
@@ -148,35 +170,65 @@ class MainActivity : AppCompatActivity() {
                 val looks = listOf("face_paint_512_v2" to "动漫脸（推荐）", "dct_anime" to "DCT 日漫",
                     "dct_3d" to "DCT 3D", "dct_handdrawn" to "DCT 手绘", "jp_face" to "日漫二次元",
                     "ghibli_face" to "吉卜力人像", "portrait_sketch" to "黑白素描")
+                val styles = styleModels()
                 for ((stem, look) in looks) {
-                    val painter = File(styleDir, "$stem.onnx")
-                    if (!painter.isFile) continue
+                    val painter = styles[stem] ?: continue
                     add(Mode.Face("卡通头像 · $look", painter))
                     add(Mode.Photo("整张照片 · $look", painter))
                 }
-                if (modelFile.isFile) {
-                    add(Mode.Face("卡通头像 · 经典卡通", modelFile))
-                    add(Mode.Photo("整张照片 · 经典卡通", modelFile))
+                avatarModel()?.let {
+                    add(Mode.Face("卡通头像 · 经典卡通", it))
+                    add(Mode.Photo("整张照片 · 经典卡通", it))
                 }
-                styleDir.listFiles { f -> f.extension == "onnx" && f.nameWithoutExtension !in headOnly }
-                    ?.sortedBy { it.name }?.forEach {
-                    add(Mode.Style("整图风格：${styleNames[it.nameWithoutExtension] ?: it.nameWithoutExtension}", it))
+                for ((stem, model) in styles) {
+                    if (stem in headOnly) continue
+                    add(Mode.Style("整图风格：${styleNames[stem] ?: stem}", model))
                 }
             }
             ui.mode.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, modes)
             modes.indexOfFirst { it.label == previous }.takeIf { it >= 0 }?.let { ui.mode.setSelection(it) }
+
+            val previousUpscaler = upscaleChoices.getOrNull(ui.upscaleChoice.selectedItemPosition)?.first
+            upscaleChoices = buildList<Pair<String, ModelSource>> {
+                if (upscalerFile.isFile) add("超分：已导入的模型" to ModelSource.Imported(upscalerFile))
+                bundled["upscale/anime"]?.let { add("超分：动漫（快）" to it) }
+                bundled["upscale/general"]?.let { add("超分：通用（照片）" to it) }
+            }
+            ui.upscaleChoice.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
+                upscaleChoices.map { it.first })
+            upscaleChoices.indexOfFirst { it.first == previousUpscaler }.takeIf { it >= 0 }
+                ?.let { ui.upscaleChoice.setSelection(it) }
         }
         val styles = modes.count { it is Mode.Style }
         ui.modelState.text = when {
             modes.isEmpty() -> getString(R.string.model_missing)
             else -> getString(R.string.model_ready_fmt,
-                if (modes.any { it is Mode.Face }) "已就绪" else "未导入", styles,
-                if (upscalerFile.isFile) "已就绪" else "未导入")
+                if (modes.any { it is Mode.Face }) "已就绪" else "未找到", styles,
+                if (upscaleChoices.isNotEmpty()) "已就绪" else "未找到")
         }
         ui.mode.visibility = if (modes.isEmpty()) View.GONE else View.VISIBLE
         ui.transparent.visibility = if (currentMode is Mode.Face) View.VISIBLE else View.GONE
-        ui.superRes.visibility = if (upscalerFile.isFile && currentMode !is Mode.Style) View.VISIBLE else View.GONE
+        val superResShown = upscaleChoices.isNotEmpty() && currentMode != null && currentMode !is Mode.Style
+        ui.superRes.visibility = if (superResShown) View.VISIBLE else View.GONE
+        ui.upscaleChoice.visibility =
+            if (superResShown && ui.superRes.isChecked && upscaleChoices.size > 1) View.VISIBLE else View.GONE
         ui.convert.isEnabled = currentMode != null && photo != null
+    }
+
+    /** The avatar generator: an imported ptoart_weights.onnx wins over the bundled one. */
+    private fun avatarModel(): ModelSource? =
+        if (modelFile.isFile) ModelSource.Imported(modelFile) else bundled["ptoart_weights"]
+
+    /** Bundled styles plus imported ones, sorted by name; an import replaces the bundled file of that name. */
+    private fun styleModels(): Map<String, ModelSource> {
+        val found = sortedMapOf<String, ModelSource>()
+        for ((key, model) in bundled) {
+            if (key.startsWith("styles/")) found[key.removePrefix("styles/")] = model
+        }
+        styleDir.listFiles { f -> f.extension == "onnx" }?.forEach {
+            found[it.nameWithoutExtension] = ModelSource.Imported(it)
+        }
+        return found
     }
 
     private fun convert() {
@@ -184,25 +236,26 @@ class MainActivity : AppCompatActivity() {
         val mode = currentMode ?: return
         val strength = ui.strength.progress / 100f
         val transparent = ui.transparent.isChecked
-        val superRes = ui.superRes.isChecked && upscalerFile.isFile
+        val upscaleModel = if (ui.superRes.isChecked && ui.superRes.visibility == View.VISIBLE) {
+            upscaleChoices.getOrNull(ui.upscaleChoice.selectedItemPosition)?.second ?: upscaleChoices.firstOrNull()?.second
+        } else null
         lifecycleScope.launch {
             busy(true, "正在转换…")
             val out = withContext(Dispatchers.Default) {
                 runCatching {
-                    val faceFile = when (mode) { is Mode.Face -> mode.file; is Mode.Photo -> mode.file; else -> null }
-                    if (faceFile != null) {
-                        faceModel(faceFile).upscaler = if (superRes) {
-                            upscaler ?: Upscaler(upscalerFile).also { upscaler = it }
-                        } else null
+                    val faceSource = when (mode) { is Mode.Face -> mode.model; is Mode.Photo -> mode.model; else -> null }
+                    if (faceSource != null) {
+                        val sr = upscaleModel?.let { upscalerFor(it) }
+                        faceModel(faceSource).upscaler = sr
                     }
                     when (mode) {
-                        is Mode.Face -> faceModel(mode.file).convertFace(src, strength, if (transparent) null else Color.WHITE)
-                        is Mode.Photo -> faceModel(mode.file).convertPhoto(src, strength)
+                        is Mode.Face -> faceModel(mode.model).convertFace(src, strength, if (transparent) null else Color.WHITE)
+                        is Mode.Photo -> faceModel(mode.model).convertPhoto(src, strength)
                         is Mode.Style -> {
                             val current = styleModel
-                            val model = if (current?.first == mode.file) current.second else {
+                            val model = if (current?.first == mode.model) current.second else {
                                 current?.second?.close()
-                                StyleModel(mode.file).also { styleModel = mode.file to it }
+                                StyleModel(mode.model).also { styleModel = mode.model to it }
                             }
                             model.stylize(src, strength)
                         }
@@ -218,9 +271,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun faceModel(file: File): Cartoonizer {
-        cartoonizer?.let { if (it.first == file) return it.second else it.second.close() }
-        return Cartoonizer(file, painter = file != modelFile).also { cartoonizer = file to it }
+    private fun faceModel(model: ModelSource): Cartoonizer {
+        cartoonizer?.let { if (it.first == model) return it.second else it.second.close() }
+        return Cartoonizer(model, painter = model != avatarModel()).also { cartoonizer = model to it }
+    }
+
+    private fun upscalerFor(model: ModelSource): Upscaler {
+        upscaler?.let {
+            if (it.first == model) return it.second
+            cartoonizer?.second?.upscaler = null
+            it.second.close()
+        }
+        return Upscaler(model).also { upscaler = model to it }
     }
 
     private fun displayName(uri: Uri): String? =
@@ -254,7 +316,7 @@ class MainActivity : AppCompatActivity() {
     private fun busy(on: Boolean, msg: String = "") {
         ui.progress.visibility = if (on) View.VISIBLE else View.GONE
         ui.status.text = msg
-        listOf(ui.importModel, ui.pick, ui.convert, ui.mode).forEach { it.isEnabled = !on }
+        listOf(ui.importModel, ui.pick, ui.convert, ui.mode, ui.upscaleChoice).forEach { it.isEnabled = !on }
         if (!on) refreshModelState(rebuild = false)
     }
 
@@ -263,7 +325,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         cartoonizer?.second?.close()
         styleModel?.second?.close()
-        upscaler?.close()
+        upscaler?.second?.close()
         super.onDestroy()
     }
 }

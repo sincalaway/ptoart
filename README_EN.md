@@ -2,23 +2,31 @@
 
 A maintainable refactor of [photo2cartoon](https://github.com/minivision-ai/photo2cartoon), preserving its generator and training algorithms while adding a shared Torch/ONNX pipeline, batch processing, structured errors, background/alpha output, intensity blending and diagnostics.
 
-[Complete Chinese tutorial](README.md) · [Windows package guide (Chinese)](packaging/WINDOWS-README.md) · [Model setup](docs/MODELS.md) · [Model downloads (Release)](https://github.com/sincalaway/ptoart/releases/latest)
+[Complete Chinese tutorial](README.md) · [Windows package guide (Chinese)](packaging/WINDOWS-README.md) · [Models](docs/MODELS.md) · [Downloads (Release)](https://github.com/sincalaway/ptoart/releases/latest)
 
-> Version 0.3.10 (DCT-Net looks now bundled in the Windows ZIP; added in 0.3.9: from Alibaba DAMO Academy — DCT Anime / DCT 3D / DCT Hand-drawn — which keep baby and child faces undistorted). All models are downloadable from the [Release](https://github.com/sincalaway/ptoart/releases/latest); the Windows EXE opens a GUI and the Android app works after importing models.
+> Version 0.3.11: **every model is built in.** The Windows ZIP and the Android APK work right after download, with no extra model downloads, and the Android app needs no import. The Windows EXE opens a GUI. Looks include Alibaba DAMO Academy's DCT-Net (DCT Anime / DCT 3D / DCT Hand-drawn), which keep baby and child faces undistorted.
 
 ## Windows portable quick start
 
 For Windows 10/11 x64, CPU only; no Python and no command line needed. **Double-click `ptoart.exe` to open the GUI.**
 
 1. From the [latest Release](https://github.com/sincalaway/ptoart/releases/latest) download `ptoart-windows-x64.zip` and extract it (keep `ptoart.exe` together with `_internal`).
-2. From the same Release download `ptoart_weights.pt` and `seg_model_384.pb` into the `weights` folder beside the EXE. The DCT-Net looks are already bundled in `weights\styles\`. Optional: unzip `ptoart-styles.zip` into `weights\styles\` and `ptoart-upscalers-realesrgan.zip` into `weights\upscale\`. Licences: cartoon generator MIT (from minivision-ai/photo2cartoon), DCT-Net looks Apache-2.0 ([menyifang/DCT-Net](https://github.com/menyifang/DCT-Net), [ModelScope](https://modelscope.cn/models/damo/cv_unet_person-image-cartoon_compound-models)), Real-ESRGAN BSD-3, AnimeGANv2/v3 non-commercial only. Face-detector weights are bundled in `weights\torch`, so nothing is downloaded at first run.
+2. Nothing else to download: every model is already in the `weights` folder beside the EXE (generator and segmentation in `weights\`, all styles and the DCT-Net looks in `weights\styles\`, Real-ESRGAN in `weights\upscale\`, the face detector in `weights\torch\`). Do not move or rename them. Licences: cartoon generator MIT (from minivision-ai/photo2cartoon), DCT-Net looks Apache-2.0 ([menyifang/DCT-Net](https://github.com/menyifang/DCT-Net), [ModelScope](https://modelscope.cn/models/damo/cv_unet_person-image-cartoon_compound-models)), Real-ESRGAN BSD-3, AnimeGANv2/v3 non-commercial only. Licence files sit next to the models. Nothing is downloaded at first run.
 3. Double-click `ptoart.exe`, pick photos (multi-select works), choose Avatar / Whole photo / Whole-image style, pick a face look from the list (Anime face (recommended), DCT Anime, DCT 3D, DCT Hand-drawn, JP anime, Ghibli portrait, Pencil sketch, Classic; the selected one turns blue with a ✓ and the top bar reads "✓ 头像画风：…"); for baby and child photos DCT 3D or DCT Anime are recommended. Adjust size, strength, transparency and super-resolution, then Convert. Every result is auto-saved to a `ptoart输出` folder next to the photo. The toolbar at the top has Undo (Ctrl+Z), Redo (Ctrl+Y) — greyed out when there is nothing to undo/redo — Save (Ctrl+S, confirms the current result is on disk and shows where), Save as… and Open output folder. The result title states the mode, look and strength used; changing a setting after a result shows a yellow "settings changed" banner with a "re-run with new settings" button. Models load once in the background at startup.
 
 Command-line use is still available for advanced users (`ptoart.exe --help`); see the Chinese README.
 
-The Windows package defaults to **SFD**, unlike the source CLI's dlib default. Face-alignment may still download detector/landmark assets on first use: keep the first real-photo run online. Offline first launch and these downloads have not been validated.
+The Windows package defaults to **SFD**, unlike the source CLI's dlib default; its detector and landmark weights are bundled in `weights\torch`.
 
-Artifacts are retained for 30 days. A known successful historical build is [run 39937315949](https://github.com/sincalaway/ptoart/actions/runs/39937315949), source `97a3d9f`; use newer successful runs when available. The workflow runs on pushes to `refactor/ptoart-20261023`, `v*` tags and manual dispatch. Update the branch filter if the default branch changes. `BUILD.txt` identifies the source commit; `SHA256SUMS.txt` checks the inner ZIP. The executable is unsigned: use trusted builds. Extract updates into a new folder rather than mixing `_internal` files.
+Development builds from Actions carry only the face detector (copy the other models from the Release into `weights`); normal users should take the Release ZIP. Artifacts are retained for 30 days. A known successful historical build is [run 39937315949](https://github.com/sincalaway/ptoart/actions/runs/39937315949), source `97a3d9f`; use newer successful runs when available. The workflow runs on pushes to `refactor/ptoart-20261023`, `v*` tags and manual dispatch. Update the branch filter if the default branch changes. `BUILD.txt` identifies the source commit; `SHA256SUMS.txt` checks the inner ZIP. The executable is unsigned: use trusted builds. Extract updates into a new folder rather than mixing `_internal` files.
+
+## Android
+
+Install `ptoart-android.apk` (about 270 MB, Android 7.0+) from the [latest Release](https://github.com/sincalaway/ptoart/releases/latest). Every model is bundled in the APK: open the app, pick a photo, choose a mode and look, and convert; no download and no import. The Import button is optional and only replaces a bundled model with your own `.onnx` file of the same name.
+
+## Separate model assets (CLI and source users)
+
+The Release still carries every model as a separate asset (`ptoart_weights.pt`, `ptoart_weights.onnx`, `seg_model_384.pb`, `ptoart-styles.zip`, `ptoart-dctnet.zip`, `ptoart-upscalers-realesrgan.zip`) for command-line and source installs. Windows and Android users do not need them.
 
 ## Options and troubleshooting
 
@@ -55,7 +63,7 @@ python -m pip install -e ".[torch,face]"
 
 The source CLI defaults to **dlib**, which may need C++ build tools and CMake. For pre-aligned portraits only, install `.[torch]` and use `--aligned`; ONNX users can install `.[onnx,face]`. Avoid mixing conflicting CPU/GPU framework packages.
 
-Prepare official models in `weights`, then run:
+Download the separate model assets from the Release into `weights` (unzip the styles, DCT-Net and upscaler zips into `weights/styles` and `weights/upscale`), then run:
 
 ```bash
 python -m ptoart doctor --model-dir ./weights --device cpu

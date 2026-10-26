@@ -157,8 +157,10 @@ def describe_options(opts):
         if mode == "face":
             parts.append(f"{opts.get('size', 1024)}px")
         parts.append(f"强度 {int(round(opts.get('strength', 1.0) * 100))}%")
+    if opts.get("transparent"):
+        parts.append("透明背景")
     if opts.get("upscale"):
-        parts.append("超分")
+        parts.append(f"超分：{UPSCALE_NAMES.get(opts['upscale'], opts['upscale'])}")
     return " · ".join(parts)
 
 
@@ -390,7 +392,8 @@ def run_gui(screenshot=None):
             r += 1
             self.upscale_menu = ctk.CTkOptionMenu(side, values=["—"], font=font(13), height=32,
                                                   fg_color=ACCENT, button_color=ACCENT_HOVER,
-                                                  button_hover_color=ACCENT_HOVER, dropdown_font=font(13))
+                                                  button_hover_color=ACCENT_HOVER, dropdown_font=font(13),
+                                                  command=lambda _v: self._ui_check_dirty())
             self.upscale_menu.grid(row=r, column=0, padx=24, pady=(0, 10), sticky="ew")
             r += 1
 
@@ -494,7 +497,9 @@ def run_gui(screenshot=None):
         def _ui_show(self, label, image, placeholder=""):
             label.image_data = image
             if image is None:
-                label.configure(image=None, text=placeholder)
+                # image="" (not None) also clears the Tk label; with None it kept pointing at the
+                # old picture, which is freed below, and the next result raised TclError.
+                label.configure(image="", text=placeholder)
                 label._ctk_img = None
             self._ui_redraw(label)
 
@@ -737,8 +742,10 @@ def run_gui(screenshot=None):
             from ptoart.pipeline import ArtPipeline
 
             config = build_config(self.models, **opts)
+            # The scene model (DCT looks in 整张照片) is loaded at construction, so it is part of the key;
+            # otherwise 整张照片 reuses the 卡通头像 pipeline of the same look and skips the background.
             heavy = (opts["mode"] == "style", opts["style"] if opts["mode"] == "style" else opts["look"],
-                     opts["upscale"])
+                     opts["upscale"], config.scene_style)
             if heavy not in self.pipelines:
                 pre = None
                 if opts["mode"] != "style":
@@ -783,6 +790,13 @@ def run_gui(screenshot=None):
 
         def _ui_poll(self):
             try:
+                self._ui_poll_events()
+            finally:
+                # Always keep polling: one failing event must not leave the window at 处理中… forever.
+                self.after(100, self._ui_poll)
+
+        def _ui_poll_events(self):
+            try:
                 while True:
                     kind, data = self.events.get_nowait()
                     if kind == "status":
@@ -817,7 +831,6 @@ def run_gui(screenshot=None):
                         messagebox.showerror("ptoart", data)
             except queue.Empty:
                 pass
-            self.after(100, self._ui_poll)
 
         # ---- history
         def _ui_show_history(self):

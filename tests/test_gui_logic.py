@@ -4,7 +4,9 @@ def test_describe_options_names_mode_and_look():
     from ptoart.gui import describe_options
 
     text = describe_options(dict(mode="face", look="jp", size=1024, strength=0.8, upscale="anime"))
-    assert text == "卡通头像 · 日漫二次元 · 1024px · 强度 80% · 超分"
+    assert text == "卡通头像 · 日漫二次元 · 1024px · 强度 80% · 超分：动漫（快）"
+    transparent = describe_options(dict(mode="face", look="jp", size=1024, strength=0.8, transparent=True))
+    assert transparent == "卡通头像 · 日漫二次元 · 1024px · 强度 80% · 透明背景"
     assert describe_options(dict(mode="style", style="hayao_v3")) == "整图风格 · 宫崎骏 v3"
 
 

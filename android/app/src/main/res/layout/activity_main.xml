@@ -32,6 +32,8 @@
         <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/superRes"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:checked="true" android:visibility="gone" android:text="@string/super_res"/>
+        <Spinner android:id="@+id/upscaleChoice" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:visibility="gone"/>
         <com.google.android.material.button.MaterialButton android:id="@+id/pick"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/pick_photo"/>

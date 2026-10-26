@@ -1,15 +1,35 @@
 ## 下载
 
+**所有模型都已内置在 App 里**：Windows 只下载 `ptoart-windows-x64.zip`，安卓只下载 `ptoart-android.apk`，不需要再下载任何模型，安卓也不需要导入。
+
 | 平台 | 文件 | 说明 |
 | --- | --- | --- |
-| Windows 10/11 x64 | `ptoart-windows-x64.zip` | 便携版，仅 CPU。**双击 `ptoart.exe` 打开图形界面**；也可命令行或拖拽 `.bat` 使用。把模型放进 EXE 旁的 `weights` 文件夹即可自动识别 |
-| Android 7.0+ | `ptoart-android.apk` | 图形界面 App：卡通头像、整张照片人脸卡通化、整图风格三种模式，离线运行 |
-| 头像生成器 | `ptoart_weights.pt` | Windows 默认后端（MIT） |
-| 人像分割 | `seg_model_384.pb` | Windows 头像/整张照片模式必需 |
-| 头像生成器 ONNX | `ptoart_weights.onnx` | 安卓必需；Windows `--backend onnx` 可选 |
-| DCT-Net 画风 | `ptoart-dctnet.zip` | DCT 日漫、DCT 3D、DCT 手绘 3 种头像/整张照片画风（阿里达摩院 DCT-Net，Apache-2.0，可商用）。**Windows 包已内置**，无需另外下载；安卓解压后多选导入 |
-| 风格模型 | `ptoart-styles.zip` | 11 种 AnimeGANv2/v3 风格 ONNX，含动漫脸、日漫二次元、吉卜力人像、黑白素描 4 种头像画风（仅限非商业用途）。**Windows 包已内置**，无需另外下载；安卓解压后多选导入 |
-| 超分模型 | `ptoart-upscalers-realesrgan.zip` | Real-ESRGAN `anime`、`general` x4（BSD-3） |
+| Windows 10/11 x64 | `ptoart-windows-x64.zip`（约 1.05 GB） | 便携版，仅 CPU。**双击 `ptoart.exe` 打开图形界面**。全部模型已在 `weights` 文件夹里：卡通生成器和人像分割、全部风格与画风（含 DCT-Net）、Real-ESRGAN 超分、人脸检测 |
+| Android 7.0+ | `ptoart-android.apk`（约 270 MB） | 图形界面 App：卡通头像、整张照片人脸卡通化、整图风格三种模式，离线运行。全部模型已内置，打开即用；「导入模型」只用于换成自己的模型 |
+
+以下单独的模型文件**只给命令行/源码用户**，Windows 和安卓用户不需要下载：
+
+| 内容 | 文件 | 许可 |
+| --- | --- | --- |
+| 头像生成器 | `ptoart_weights.pt`、`ptoart_weights.onnx` | MIT |
+| 人像分割 | `seg_model_384.pb` | 上游资源包 |
+| 风格模型 | `ptoart-styles.zip`（11 种 AnimeGANv2/v3 风格，含动漫脸、日漫二次元、吉卜力人像、黑白素描 4 种头像画风） | **仅限非商业用途** |
+| DCT-Net 画风 | `ptoart-dctnet.zip`（DCT 日漫、DCT 3D、DCT 手绘，阿里达摩院 DCT-Net） | Apache-2.0 |
+| 超分模型 | `ptoart-upscalers-realesrgan.zip`（Real-ESRGAN `anime`、`general` x4） | BSD-3 |
+
+## 本版更新（v0.3.11）
+
+**所有模型内置，下载 App 即可用**
+- Windows 包的 `weights` 文件夹里已经有 `ptoart_weights.pt`、`seg_model_384.pb`、`ptoart_weights.onnx`、全部风格和画风（`styles\`，含 DCT-Net）、Real-ESRGAN 超分（`upscale\`）和人脸检测（`torch\`），各自的许可文件也在里面。首次启动直接识别，不用放文件、不用导入。
+- 安卓 APK 内置 `ptoart_weights.onnx`、全部风格和 DCT-Net 画风、两个超分模型。首次打开，所有模式和画风就出现在下拉框里，不用导入；模型直接从 APK 读取，不额外占用手机存储。「超分辨率增强」下面可选动漫（快）或通用（照片）。「导入模型」保留为可选：导入同名模型会替换内置模型。
+
+**Windows 界面修复**
+- 「整张照片」+ DCT 画风之前会复用同一画风「卡通头像」的已加载模型，背景没有被卡通化；现在背景会正确地一起变成卡通。
+- 结果标题会写明「透明背景」和所用的超分模型（如「超分：动漫（快）」）。
+- 出图后切换超分模型，也会提示「设置已更改」。
+- 修复连续出图时偶发的 TclError（图片清空方式错误）。
+- 某个事件处理出错时，界面不再卡在「处理中…」。
+- 降低内存占用：风格和超分模型不再保留 ONNX Runtime 的 CPU 内存池，多试几种风格也不会越来越占内存。
 
 ## 本版更新（v0.3.10）
 
@@ -48,7 +68,7 @@
 | 头像画风：8 种（动漫脸、DCT 日漫 / 3D / 手绘、日漫二次元、吉卜力人像、黑白素描、经典卡通） | 「头像画风」点选列表，下方有说明 | `--look dct_3d` 等 | 模式下拉框 |
 | 高清尺寸：512 / 1024 / 2048 | 「尺寸」 | `--size 1024` | 头像默认 512 |
 | 卡通强度 0–100% | 「强度」滑块 | `--strength 0.8` | 滑块 |
-| 超分放大：Real-ESRGAN x4 | 「超分辨率增强」开关 | `--upscale anime\|general` | 开关 |
+| 超分放大：Real-ESRGAN x4 | 「超分辨率增强」开关 | `--upscale anime\|general` | 开关（动漫 / 通用） |
 | 自动保存 / 撤销 / 重做 / 保存 / 另存为 | 每次自动存到 `ptoart输出`；顶部工具栏 + Ctrl+Z / Ctrl+Y / Ctrl+S | 指定输出路径 | 「保存 PNG」 |
 | 批量处理 | 一次选多张 | `ptoart.exe batch 照片文件夹 输出文件夹` | — |
 | 拖拽即用 | 把照片拖到包内 `.bat` | — | — |
@@ -59,9 +79,8 @@
 
 ## 重要说明
 
-- 头像、分割、风格、超分模型单独附在本 Release：Windows 把 `.pt`、`.pb` 放进 EXE 旁的 `weights\`；安卓导入 `.onnx`。Windows 包已内置人脸检测模型（`weights\torch`），无需联网。
-- Windows 版需要 `ptoart_weights.pt` + `seg_model_384.pb`；安卓版只需 `ptoart_weights.onnx`（人脸检测与人像分割使用内置 ML Kit 模型）。
-- 风格包（整图风格 + 4 种头像画风）：解压 `ptoart-styles.zip`，Windows 放到 `weights\styles\`；安卓在 App 中「导入模型」多选导入。DCT 画风已内置在 Windows 包里；安卓把 `ptoart-dctnet.zip` 解压后同样导入。
+- 所有模型都已内置：Windows 包在 EXE 旁的 `weights\`（含 `styles\`、`upscale\`、`torch\`），安卓在 APK 内；都不需要联网或导入。安卓的人脸检测与人像分割使用内置 ML Kit 模型。
+- 单独的模型文件（`.pt`、`.onnx`、`.pb` 和三个 zip）继续附在本 Release，供命令行和源码用户放进自己的 `weights` 目录。
 - 许可：头像生成器 MIT（minivision-ai/photo2cartoon）；DCT 画风 Apache-2.0（阿里达摩院 DCT-Net，menyifang/DCT-Net，ModelScope；仅转换为 ONNX，权重未改动，zip 内附许可）；超分 BSD-3；AnimeGANv2/v3 仅限非商业用途。
 - 安卓 APK 使用调试签名，安装时需允许“未知来源”；EXE 未签名。
 - 这是预览版：自动构建与自检已通过，真实照片 + 官方权重的出图效果未做完整验收。

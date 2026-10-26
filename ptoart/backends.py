@@ -78,6 +78,16 @@ class OnnxBackend:
         self.session = None
 
 
+def _session_options(ort):
+    """No CPU memory arena: a whole-photo style pass at 1536 px peaks near 2 GB, and with the
+    default arena each session keeps that peak (and grows on reruns) for as long as it lives,
+    so a GUI session that tries a few styles runs out of RAM. Without it the memory is returned
+    after every run, at the same steady-state speed."""
+    options = ort.SessionOptions()
+    options.enable_cpu_mem_arena = False
+    return options
+
+
 class StyleBackend:
     """Whole-image style ONNX generator: NCHW [-1,1] in and out, any size.
 
@@ -93,7 +103,8 @@ class StyleBackend:
         except ImportError as exc:
             raise ModelError("Style output requires: pip install 'ptoart[onnx]'") from exc
         try:
-            self.session = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
+            self.session = ort.InferenceSession(str(model_path), _session_options(ort),
+                                                providers=["CPUExecutionProvider"])
             inputs = self.session.get_inputs()
             if len(inputs) != 1 or len(inputs[0].shape) != 4 or inputs[0].shape[1] not in (3, "3"):
                 raise ValueError(f"Expected one NCHW RGB input, got {inputs[0].shape}")
@@ -122,7 +133,8 @@ class UpscaleBackend:
         except ImportError as exc:
             raise ModelError("Upscaling requires: pip install 'ptoart[onnx]'") from exc
         try:
-            self.session = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
+            self.session = ort.InferenceSession(str(model_path), _session_options(ort),
+                                                providers=["CPUExecutionProvider"])
             meta = self.session.get_modelmeta().custom_metadata_map
             self.scale = int(meta.get("ptoart_scale", 4))
             self.input_name = self.session.get_inputs()[0].name

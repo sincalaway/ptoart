@@ -13,8 +13,8 @@ android {
         applicationId = "com.sincalaway.ptoart"
         minSdk = 24
         targetSdk = 34
-        versionCode = (System.getenv("PTOART_VERSION_CODE") ?: "12").toInt()
-        versionName = System.getenv("PTOART_VERSION_NAME") ?: "0.3.10"
+        versionCode = (System.getenv("PTOART_VERSION_CODE")?.takeIf { it.isNotBlank() } ?: "13").toInt()
+        versionName = (System.getenv("PTOART_VERSION_NAME")?.takeIf { it.isNotBlank() } ?: "0.3.11").removePrefix("v")
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
     }
 
@@ -50,6 +50,9 @@ android {
         checkReleaseBuilds = false
     }
     packaging { jniLibs { useLegacyPackaging = false } }
+    // Release builds bundle every model in assets/models (copied in by CI). ONNX files stay
+    // uncompressed so they are read straight from the APK at full speed.
+    androidResources { noCompress += "onnx" }
 }
 
 dependencies {

@@ -6,6 +6,13 @@ on:
     paths: ['android/**', '.github/workflows/android-apk.yml']
   workflow_dispatch:
   workflow_call:
+    inputs:
+      bundle-models:
+        # The Release workflow sets this after its models + dctnet jobs, so the APK ships every
+        # model in assets/models. Development builds stay model-less (users import instead).
+        description: 'Bundle the ptoart-models and ptoart-dctnet artifacts of this run into the APK'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -23,16 +30,49 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - uses: actions/download-artifact@v4
+        if: ${{ inputs.bundle-models }}
+        with:
+          name: ptoart-models
+          path: models-in
+      - uses: actions/download-artifact@v4
+        if: ${{ inputs.bundle-models }}
+        with:
+          name: ptoart-dctnet
+          path: models-in
+      - name: Bundle models into app/src/main/assets/models
+        if: ${{ inputs.bundle-models }}
+        run: |
+          dest=android/app/src/main/assets/models
+          mkdir -p "$dest/styles" "$dest/upscale"
+          cp models-in/ptoart_weights.onnx "$dest/"
+          # The zips hold only .onnx models and their licence/readme .txt files.
+          unzip -o -j models-in/ptoart-styles.zip -d "$dest/styles"
+          unzip -o -j models-in/ptoart-dctnet.zip -d "$dest/styles"
+          unzip -o -j models-in/ptoart-upscalers-realesrgan.zip -d "$dest/upscale"
+          ls -la "$dest" "$dest/styles" "$dest/upscale"
+          test "$(ls "$dest"/styles/*.onnx | wc -l)" -ge 16 || { echo "::error::styles missing"; exit 1; }
+          for f in styles/face_paint_512_v2 styles/dct_3d styles/dct_anime_bg upscale/anime upscale/general; do
+            test -s "$dest/$f.onnx" || { echo "::error::$f.onnx missing"; exit 1; }
+          done
+          du -sh "$dest"
       - name: Build APK
         working-directory: android
         env:
-          PTOART_VERSION_NAME: ${{ github.ref_type == 'tag' && github.ref_name || '0.3.0-dev' }}
-          PTOART_VERSION_CODE: ${{ github.run_number }}
+          # Tag builds use the tag (v prefix dropped); otherwise build.gradle.kts defaults apply.
+          # versionCode always comes from build.gradle.kts so updates install over older releases.
+          PTOART_VERSION_NAME: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
         run: gradle --no-daemon assembleRelease
       - name: Collect APK
         run: |
           mkdir -p dist
           cp android/app/build/outputs/apk/release/app-release.apk dist/ptoart-android.apk
+          ls -la dist/ptoart-android.apk
+          if [ "${{ inputs.bundle-models }}" = "true" ]; then
+            n=$(unzip -l dist/ptoart-android.apk | grep -c 'assets/models/.*\.onnx$' || true)
+            echo "$n bundled onnx files in the APK"
+            test "$n" -ge 19 || { echo "::error::APK is missing bundled models"; exit 1; }
+          fi
           cd dist && sha256sum ptoart-android.apk > SHA256SUMS-android.txt
       - uses: actions/upload-artifact@v4
         with:

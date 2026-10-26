@@ -2,9 +2,9 @@
 
 将人像照片转换为卡通头像的工具（Windows 图形界面 / 安卓 App / 命令行），基于 [minivision-ai/photo2cartoon](https://github.com/minivision-ai/photo2cartoon) 重构。支持 Windows 便携 EXE、Python CLI 和 Python API，以及单图、批量、透明背景和强度混合。
 
-**第一次用？看 [小白使用教程](docs/QUICKSTART.md)** · [English](README_EN.md) · [Windows 便携版说明](packaging/WINDOWS-README.md) · [模型准备](docs/MODELS.md) · [模型下载（Release）](https://github.com/sincalaway/ptoart/releases/latest)
+**第一次用？看 [小白使用教程](docs/QUICKSTART.md)** · [English](README_EN.md) · [Windows 便携版说明](packaging/WINDOWS-README.md) · [模型说明](docs/MODELS.md) · [下载（Release）](https://github.com/sincalaway/ptoart/releases/latest)
 
-> 当前版本 0.3.10（阿里达摩院 DCT-Net 画风 DCT 日漫 / DCT 3D / DCT 手绘 已直接内置在 Windows 包里，宝宝和儿童照片不变形）。Windows 双击即开图形界面，安卓 App 导入模型即可用；所有模型都在 [Release](https://github.com/sincalaway/ptoart/releases/latest) 中下载。
+> 当前版本 0.3.11：**所有模型都已内置**。Windows 包和安卓 APK 下载后直接能用，不需要再下载任何模型，安卓也不需要导入。Windows 双击 `ptoart.exe` 即开图形界面。画风包括阿里达摩院 DCT-Net 的 DCT 日漫 / DCT 3D / DCT 手绘（宝宝和儿童照片不变形）。
 
 ## 先了解能做什么
 
@@ -42,9 +42,9 @@
 | 日漫二次元 | `jp` | `jp_face` | 大眼睛、二次元脸 |
 | 吉卜力人像 | `ghibli` | `ghibli_face` | 柔和手绘油彩感 |
 | 黑白素描 | `sketch` | `portrait_sketch` | 黑白线稿 |
-| 经典卡通 | `classic`（或不加 `--style`） | `ptoart_weights.pt/.onnx` | photo2cartoon 原版，线条夸张，儿童照片易变形 |
+| 经典卡通 | `classic`（或不加 `--style`） | `ptoart_weights.pt/.onnx` | 上游原版卡通生成器，线条夸张，儿童照片易变形 |
 
-DCT 画风已内置在 Windows 包的 `weights\styles\` 里；安卓和源码用户用 `ptoart-dctnet.zip`（解压到 `weights/styles/` 或在 App 里导入）。DCT-Net 自带头部/背景两个模型：头像模式把对齐后的人脸裁图按 DCT-Net 的 288×288 头部模型推理；整张照片模式先用背景模型把整张图卡通化，再把头部结果按人像分割羽化贴回，和 DCT-Net 官方流程一致（人脸检测、对齐沿用 ptoart 自己的）。DCT 背景模型也作为整图风格「DCT 日漫 / DCT 3D / DCT 手绘」出现。自己转换：`python tools/export_dctnet.py -o weights/styles`（需要 `tensorflow==2.15.*`、`tf2onnx`）。
+DCT 画风和其他所有模型一样已内置在 Windows 包（`weights\styles\`）和安卓 APK 里；只有源码/命令行用户需要 `ptoart-dctnet.zip`（解压到 `weights/styles/`）。DCT-Net 自带头部/背景两个模型：头像模式把对齐后的人脸裁图按 DCT-Net 的 288×288 头部模型推理；整张照片模式先用背景模型把整张图卡通化，再把头部结果按人像分割羽化贴回，和 DCT-Net 官方流程一致（人脸检测、对齐沿用 ptoart 自己的）。DCT 背景模型也作为整图风格「DCT 日漫 / DCT 3D / DCT 手绘」出现。自己转换：`python tools/export_dctnet.py -o weights/styles`（需要 `tensorflow==2.15.*`、`tf2onnx`）。
 
 AnimeGAN 画风以 512 分辨率推理；经典卡通生成器只在 256×256 推理。更大的 `--size` 默认用 Lanczos + 轻度锐化放大；加 `--upscale anime` 则用 Real-ESRGAN 超分，能补出清晰线条。透明边缘和强度混合始终使用原分辨率。重构未消除上游训练数据的人群偏差。
 
@@ -55,44 +55,43 @@ AnimeGAN 画风以 512 分辨率推理；经典卡通生成器只在 256×256 �
 | 在自己的 Python 程序里调用 | 「Python API」 |
 | 安卓手机上点选照片生成头像 | 「安卓 App」 |
 
-## 模型下载（全部在 Release 里）
+## 模型：已全部内置
 
-所有运行所需的模型都附在 [Releases](https://github.com/sincalaway/ptoart/releases/latest) 的 Assets 中，下载即可用，无需自己转换：
+从 0.3.11 起，**Windows 包和安卓 APK 都已内置全部模型**，下载 App 后什么都不用另外下载：
 
-| 文件 | 大小 | 用途 | Windows 放到 | 安卓 |
+| 内置内容 | 大小 | 用途 | Windows 包里的位置 | 安卓 APK |
 | --- | --- | --- | --- | --- |
 | `ptoart_weights.pt` | 约 144 MB | 卡通头像生成器（Torch，Windows 默认后端） | `weights\` | 不需要 |
-| `seg_model_384.pb` | 约 32 MB | 人像分割（Windows 头像/整张照片模式必需） | `weights\` | 不需要（用内置 ML Kit） |
-| `ptoart_weights.onnx` | 约 18 MB | 卡通头像生成器（ONNX，安卓必需；Windows 加 `--backend onnx` 时用） | `weights\`（可选） | 导入 |
-| `ptoart-styles.zip` | 约 71 MB | 11 种风格（含动漫脸、日漫二次元、吉卜力人像、黑白素描 4 种头像画风） | Windows 包已内置，无需下载 | 解压后多选导入 |
-| `ptoart-dctnet.zip` | 约 27 MB | DCT-Net 画风：DCT 日漫、DCT 3D、DCT 手绘（Apache-2.0，可商用） | Windows 包已内置，无需下载 | 解压后多选导入 |
-| `ptoart-upscalers-realesrgan.zip` | 约 7 MB | 超分辨率放大：`anime`（卡通，快）、`general`（通用） | 解压到 `weights\upscale\` | 导入一个（推荐 anime） |
+| `seg_model_384.pb` | 约 32 MB | 人像分割（头像/整张照片模式） | `weights\` | 不需要（用内置 ML Kit） |
+| `ptoart_weights.onnx` | 约 18 MB | 卡通头像生成器（ONNX；Windows 命令行 `--backend onnx` 时用） | `weights\` | 已内置 |
+| 风格和画风（`ptoart-styles.zip` 的内容） | 约 71 MB | 11 种风格（含动漫脸、日漫二次元、吉卜力人像、黑白素描 4 种头像画风） | `weights\styles\` | 已内置 |
+| DCT-Net 画风（`ptoart-dctnet.zip` 的内容） | 约 27 MB | DCT 日漫、DCT 3D、DCT 手绘（Apache-2.0，可商用） | `weights\styles\` | 已内置 |
+| Real-ESRGAN 超分（`ptoart-upscalers-realesrgan.zip` 的内容） | 约 7 MB | 超分辨率放大：`anime`（卡通，快）、`general`（通用） | `weights\upscale\` | 已内置 |
+| 人脸检测（SFD、2DFAN4） | 约 186 MB | Windows 版人脸检测与关键点 | `weights\torch\` | 不需要（用内置 ML Kit） |
 
-目录示例：
+Windows 包解压后的目录（全部已带好，不要移动或改名）：
 
 ```text
 C:\ptoart\
 ├── ptoart.exe
 ├── _internal\
 └── weights\
-    ├── ptoart_weights.pt
-    ├── seg_model_384.pb
-    ├── ptoart_weights.onnx      # 可选
-    ├── styles\hayao.onnx、jp_face.onnx、dct_3d.onnx …  # 风格和画风（含 DCT-Net）
-    ├── upscale\anime.onnx、general.onnx  # 超分
-    └── torch\                             # 人脸检测模型，已随 Windows 包附带，勿删
+    ├── ptoart_weights.pt、seg_model_384.pb、ptoart_weights.onnx
+    ├── styles\hayao.onnx、jp_face.onnx、dct_3d.onnx …  # 风格和画风（含 DCT-Net）及许可文件
+    ├── upscale\anime.onnx、general.onnx                 # 超分及许可文件
+    └── torch\                                         # 人脸检测模型
 ```
 
-只想用整图风格时，只需要 `styles` 里的模型，不需要 `.pt`/`.pb`。训练用的 `model_mobilefacenet.pth` 和 `cartoon_data` 训练图片不放进 Release，普通使用都不需要（需要训练可从[光鸭云盘](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)或[上游资源包](docs/MODELS.md)获取）。
+同样的模型仍作为单独文件附在 [Releases](https://github.com/sincalaway/ptoart/releases/latest) 的 Assets 中（`ptoart_weights.pt`、`ptoart_weights.onnx`、`seg_model_384.pb`、`ptoart-styles.zip`、`ptoart-dctnet.zip`、`ptoart-upscalers-realesrgan.zip`），**只给命令行/源码用户使用**；Windows 和安卓用户不需要下载它们。训练用的 `model_mobilefacenet.pth` 和 `cartoon_data` 训练图片不放进 Release，普通使用都不需要（需要训练可从[光鸭云盘](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)或[上游资源包](docs/MODELS.md)获取）。
 
 许可：卡通头像权重来自 [minivision-ai/photo2cartoon](https://github.com/minivision-ai/photo2cartoon)（MIT）；DCT 画风来自阿里达摩院 [DCT-Net](https://github.com/menyifang/DCT-Net)（[ModelScope](https://modelscope.cn/models/damo/cv_unet_person-image-cartoon_compound-models)，Apache-2.0）；超分模型来自 [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)（BSD-3）；**AnimeGANv2 / AnimeGANv3 风格权重仅限非商业用途**。
 
 ## 安卓 App
 
-1. 在 [Releases](https://github.com/sincalaway/ptoart/releases) 下载 `ptoart-android.apk` 安装（Android 7.0+，需允许安装未知来源应用；APK 为调试签名）。
-2. 在同一 Release 下载 **`ptoart_weights.onnx`** 存到手机，在 App 中点「导入模型」选中它（模型不随 App 分发）。
-3. 想要整图风格或更清晰的头像，把 `ptoart-styles.zip`、`ptoart-upscalers-realesrgan.zip` 解压后，在「导入模型」里多选导入（App 自动识别模型类型）。导入超分模型后会出现「超分辨率增强」开关。
-4. 选照片，在下拉框选模式：「卡通头像」（512×512，可透明背景）、「整张照片」（所有人脸卡通化贴回原图）或「整图风格：宫崎骏/新海诚/…」；导入风格包后头像和整张照片会多出「动漫脸（推荐）」「日漫二次元」「吉卜力人像」「黑白素描」画风；导入 `ptoart-dctnet.zip` 里的模型后多出「DCT 日漫」「DCT 3D」「DCT 手绘」（安卓的整张照片模式只把脸换成 DCT 画风，背景保持写实）。调强度后转换并保存 PNG。
+1. 在 [Releases](https://github.com/sincalaway/ptoart/releases) 下载 `ptoart-android.apk`（约 270 MB）安装（Android 7.0+，需允许安装未知来源应用；APK 为调试签名）。
+2. 打开 App 就能用：**所有模型已内置，不需要下载或导入**。下拉框里已列出全部模式：「卡通头像」（512×512，可透明背景）、「整张照片」（所有人脸卡通化贴回原图）和「整图风格：宫崎骏/新海诚/…」；头像和整张照片可选「动漫脸（推荐）」「DCT 日漫」「DCT 3D」「DCT 手绘」「日漫二次元」「吉卜力人像」「黑白素描」「经典卡通」画风（安卓的整张照片模式只把脸换成 DCT 画风，背景保持写实）。
+3. 选照片，选模式，调强度；需要更清晰的头像时打开「超分辨率增强」（可选动漫或通用）。转换后保存 PNG。
+4. 「导入模型」按钮是可选的：只在想换成自己的 `.onnx` 模型时使用，导入的同名模型会替换内置模型。
 
 安卓版全程离线：人脸检测与人像分割使用打包进 APK 的 Google ML Kit 模型，卡通生成使用 ONNX Runtime。裁剪与对齐策略与桌面版近似但不完全一致，效果可能略有差异。
 
@@ -106,31 +105,19 @@ C:\ptoart\
 2. 解压得到包含 `ptoart.exe` 和 `_internal` 的 `ptoart` 文件夹，放在方便的位置，例如 `C:\ptoart`。**不要只复制 EXE，也不要在 ZIP 内直接运行。**
 3. 可用同一页面的 `SHA256SUMS-all.txt` 核对下载文件；包内 `BUILD.txt` 标明源码提交。EXE 未签名，请确认来自本仓库的 Release。
 
-开发版构建仍可在 [Windows EXE 工作流](https://github.com/sincalaway/ptoart/actions/workflows/windows-exe.yml) 的 Artifacts 中下载（保留 30 天）。
+开发版构建仍可在 [Windows EXE 工作流](https://github.com/sincalaway/ptoart/actions/workflows/windows-exe.yml) 的 Artifacts 中下载（保留 30 天）；开发版只带人脸检测模型，其余模型要从 Release 复制到 `weights` 里，普通用户请用 Release。
 
-### 2. 准备模型和照片
+### 2. 模型已经带好
 
-从 [Release](https://github.com/sincalaway/ptoart/releases/latest) 下载模型（清单见上方「模型下载」）。普通照片使用默认 Torch 后端时，至少需要以下两个模型文件，放入 EXE 旁的 `weights` 文件夹：
+所有模型都已在 `weights` 文件夹里（卡通生成器、人像分割、全部风格和画风、超分、人脸检测），**不需要再下载任何模型**，首次运行也不联网。不要移动、改名或删除 `weights` 里的文件；`weights\README.txt` 是说明，列出了每个文件夹的内容和许可。
 
-```text
-C:\ptoart\
-├── ptoart.exe
-├── _internal\                        # 保留整个文件夹
-├── weights\
-│   ├── ptoart_weights.pt       # 卡通生成器
-│   └── seg_model_384.pb               # 人像分割模型
-└── portrait.jpg                      # 你自己的测试照片
-```
-
-`weights` 中自带的 `README.txt` 只是提示，不是模型。不要把下载网页或随机测试权重重命名后当模型使用。普通推理不需要训练用的 `model_mobilefacenet.pth`。
-
-Windows 包已内置 face-alignment 的 SFD 检测器和 2DFAN4 关键点权重（`weights\torch`），首次运行不再联网下载。
+把要转换的照片放在任意文件夹即可，程序会把结果存到照片旁的 `ptoart输出` 文件夹。
 
 ### 3. 双击 `ptoart.exe`，全程鼠标操作
 
 不需要打开命令行：
 
-1. 双击 `ptoart.exe`，打开图形界面（首次启动约 10–30 秒）。左下角显示模型状态，✓ 表示已就绪；缺模型时点「打开模型文件夹」放入文件，再点「重新检测模型」。
+1. 双击 `ptoart.exe`，打开图形界面（首次启动约 10–30 秒）。左下角显示模型状态，Release 包里全部为 ✓。
 2. 点「＋ 选择照片」，可一次多选。
 3. 选效果：「卡通头像」「整张照片」（所有人脸卡通化贴回原图）或「整图风格」（再选宫崎骏、新海诚等）。头像和整张照片再在「头像画风」列表里点选（选中的一项会变成蓝底并带 ✓，窗口顶部写着「✓ 头像画风：…」）：动漫脸（推荐）、DCT 日漫、DCT 3D、DCT 手绘、日漫二次元、吉卜力人像、黑白素描、经典卡通。给宝宝、儿童照片推荐 **DCT 3D** 或 **DCT 日漫**。
 4. 按需调整：头像尺寸 512 / 1024 / 2048、卡通强度、透明背景、超分辨率增强。
@@ -221,7 +208,7 @@ cd "C:\ptoart"
 
 #### 6. 可选：ONNX 或已对齐头像
 
-Windows 包也包含 ONNX Runtime。准备 `ptoart_weights.onnx` 后，用同一后端检查和转换；普通照片仍需要分割模型及人脸预处理，不是纯 ONNX 依赖链：
+Windows 包也包含 ONNX Runtime 和 `weights\ptoart_weights.onnx`，可用 ONNX 后端检查和转换；普通照片仍需要分割模型及人脸预处理，不是纯 ONNX 依赖链：
 
 ```powershell
 .\ptoart.exe doctor --backend onnx --model-dir .\weights --device cpu
@@ -245,7 +232,7 @@ Windows 包也包含 ONNX Runtime。准备 `ptoart_weights.onnx` 后，用同一
 | PowerShell 找不到命令 | 先 `cd` 到 EXE 所在目录，使用 `.\ptoart.exe`；检查是否仍在 ZIP 内或少解压了一层 |
 | `doctor` 中模型为 `false` / 缺少模型 | 核对文件名、真实文件和 `--model-dir`；不要只放 `README.txt` |
 | `doctor` 通过但模型加载失败 | 文件存在不代表格式或内容有效；确认可信权重和后端匹配，不要用改名的网页文件 |
-| 首次下载失败 / 无法联网 | 检查终端给出的第三方下载错误及网络；SFD/关键点缓存需另行准备，不能保证离线首启 |
+| 首次下载失败 / 无法联网 | Release 包的所有模型（含 `weights\torch` 人脸检测）都已内置，不需要联网；出现下载提示说明 `weights` 文件夹不完整，请重新解压 |
 | `No face detected` | 换清晰、正面、单人照片；不是随意加 `--aligned` 的理由 |
 | `Output already exists` / `Cannot write` | 换输出名、检查目录权限；明确希望覆盖图片时才加 `--overwrite` |
 | `Report already exists` | 换 JSON 报告名；`--overwrite` 不会覆盖报告 |

@@ -59,3 +59,12 @@ def test_original_file_is_protected_even_with_overwrite(tmp_path):
         with pytest.raises(ImageError, match="original photos"):
             pipeline.convert_file(source, source, overwrite=True)
     assert source.read_bytes() == content
+
+
+def test_style_sessions_do_not_keep_a_memory_arena():
+    """A 1536 px style pass peaks near 2 GB; with the default arena every loaded style kept it."""
+    import onnxruntime as ort
+
+    from ptoart.backends import _session_options
+
+    assert _session_options(ort).enable_cpu_mem_arena is False

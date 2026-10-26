@@ -17,7 +17,11 @@ jobs:
   windows:
     uses: ./.github/workflows/windows-exe.yml
   android:
+    # Built after the model exports so the APK bundles every model (assets/models).
+    needs: [models, dctnet]
     uses: ./.github/workflows/android-apk.yml
+    with:
+      bundle-models: true
   models:
     runs-on: ubuntu-latest
     steps:
@@ -96,42 +100,33 @@ jobs:
           name: ptoart-dctnet
           path: models-out/*
   windows-bundle:
-    # Bake the DCT-Net looks into the Windows portable ZIP (weights/styles), so Windows users
-    # get DCT 日漫 / 3D / 手绘 without downloading or unzipping anything extra.
-    needs: [windows, dctnet]
+    # Bake every model into the Windows portable ZIP under ptoart/weights, so Windows users
+    # download nothing but the app: generator + segmentation in weights/, all styles and the
+    # DCT-Net looks in weights/styles, Real-ESRGAN in weights/upscale (the face detector is
+    # already in weights/torch from the EXE build).
+    needs: [windows, models, dctnet]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools
       - uses: actions/download-artifact@v4
         with:
           name: ptoart-windows-x64
           path: win
       - uses: actions/download-artifact@v4
         with:
+          name: ptoart-models
+          path: models
+      - uses: actions/download-artifact@v4
+        with:
           name: ptoart-dctnet
           path: dct
-      - name: Add DCT-Net models to ptoart/weights/styles inside the ZIP
+      - name: Add all models to ptoart/weights inside the ZIP
         run: |
           mkdir -p out && cp win/ptoart-windows-x64.zip out/
-          python3 - <<'PY'
-          import zipfile
-          src = zipfile.ZipFile("dct/ptoart-dctnet.zip")
-          z = zipfile.ZipFile("out/ptoart-windows-x64.zip", "a", zipfile.ZIP_DEFLATED, compresslevel=9)
-          names = z.namelist()
-          sep = "\\" if any("\\" in n for n in names) else "/"
-          root = names[0].replace("\\", "/").split("/")[0]
-          added = 0
-          for n in src.namelist():
-              if n.endswith("/"):
-                  continue
-              target = sep.join([root, "weights", "styles", n.split("/")[-1]])
-              if target in names:
-                  continue
-              z.writestr(target, src.read(n))
-              added += 1
-          z.close()
-          print("added", added, "files under", root + "/weights/styles")
-          assert added >= 3, "DCT-Net models missing"
-          PY
+          python3 tools/bundle_windows_models.py out/ptoart-windows-x64.zip --models models --dctnet dct
+          ls -la out
           cd out && sha256sum ptoart-windows-x64.zip > SHA256SUMS.txt && cat SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:

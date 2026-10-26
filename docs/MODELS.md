@@ -1,6 +1,19 @@
-# 模型准备
+# 模型说明
 
-从 v0.3.0 起，所有推理所需模型都附在 [GitHub Release](https://github.com/sincalaway/ptoart/releases/latest) 中（由发布工作流从上游资源包下载、转换并校验后上传，附 `SHA256SUMS-all.txt`）。EXE/APK 本身不含模型。不要把随机权重测试生成的文件当作可用模型。
+**从 v0.3.11 起，所有模型都已内置在 Windows 包和安卓 APK 里，下载 App 后不需要再下载任何模型，安卓也不需要导入。** 发布工作流从上游资源包下载、转换并校验模型，再直接打包进 App：
+
+| 模型 | 许可 | Windows 包（`ptoart\weights\`） | 安卓 APK（`assets/models/`） |
+| --- | --- | --- | --- |
+| 卡通头像生成器 `ptoart_weights.pt` / `.onnx` | MIT | `ptoart_weights.pt`、`ptoart_weights.onnx` | `ptoart_weights.onnx` |
+| 人像分割 `seg_model_384.pb` | 上游资源包 | `seg_model_384.pb` | 不需要（ML Kit） |
+| AnimeGANv2/v3 风格和画风（`ptoart-styles.zip`） | **仅限非商业用途** | `styles\` | `styles/` |
+| DCT-Net 画风（`ptoart-dctnet.zip`） | Apache-2.0 | `styles\` | `styles/` |
+| Real-ESRGAN 超分（`ptoart-upscalers-realesrgan.zip`） | BSD-3 | `upscale\` | `upscale/` |
+| face-alignment 人脸检测（SFD、2DFAN4） | BSD-3 | `torch\` | 不需要（ML Kit） |
+
+各模型的许可文件随模型放在同一文件夹里。Windows 版首次启动直接从 `ptoart.exe` 旁的 `weights` 文件夹读取，不需要任何导入步骤；安卓 App 直接从 APK 内读取模型（不额外占用存储），「导入模型」只用于换成自己的同名模型。
+
+同样的模型仍作为单独文件附在 [GitHub Release](https://github.com/sincalaway/ptoart/releases/latest) 中（附 `SHA256SUMS-all.txt`），**供命令行和源码用户使用**；下文说明如何取得、放置和自行转换。从 Actions 下载的开发版构建不含这些模型（Windows 开发版只带人脸检测）。不要把随机权重测试生成的文件当作可用模型。
 
 ## 到哪里取得
 
@@ -21,7 +34,7 @@
 
 旧 `test.py` / `test_onnx.py` 仍从仓库的 `models/` 读生成器、`utils/` 读分割模型。新 CLI 可用 `--weights`、`--segmentation` 显式指向这些文件。
 
-完整的人脸预处理还会依赖 face-alignment 的检测/关键点资产，其首次运行可能触发第三方下载。离线部署前，应准备并验证这些资产和依赖缓存，不能仅复制上述三个文件就保证离线可用。
+源码安装时，完整的人脸预处理还会依赖 face-alignment 的检测/关键点资产，其首次运行可能触发第三方下载（Windows 包已在 `weights\torch` 内置这些资产）。源码环境离线部署前，应准备并验证这些资产和依赖缓存。
 
 ## 自行生成 ONNX（可选）
 
@@ -50,7 +63,7 @@ python tools/export_styles_v3.py -o weights/styles                 # AnimeGANv3�
 
 ## DCT-Net 画风（DCT 日漫 / DCT 3D / DCT 手绘）
 
-Release 资产 `ptoart-dctnet.zip`，解压到 `weights/styles`。自行生成：
+已内置在 Windows 包和安卓 APK 里。源码用户用 Release 资产 `ptoart-dctnet.zip`，解压到 `weights/styles`。自行生成：
 
 ```bash
 pip install "tensorflow==2.15.*" "tf2onnx==1.16.1" "onnx==1.16.*" "numpy<2" onnxruntime

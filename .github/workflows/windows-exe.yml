@@ -101,7 +101,22 @@ jobs:
           Copy-Item packaging/windows-bat/*.bat dist/ptoart/
           Copy-Item build-dependencies.txt dist/ptoart/build-dependencies.txt
           New-Item -ItemType Directory -Force dist/ptoart/weights | Out-Null
-          'Put ptoart_weights.pt and seg_model_384.pb here, unzip ptoart-styles.zip into styles\ and the upscalers into upscale\. In Release builds the DCT-Net looks (DCT anime / 3D / hand-drawn) are already in styles\. The torch folder (face detector) is already included; do not delete it.' | Set-Content dist/ptoart/weights/README.txt
+          @'
+          ptoart model folder - do not move, rename or delete anything in here.
+
+          The Release download (ptoart-windows-x64.zip from GitHub Releases) already contains every model,
+          so there is nothing to download, unzip or import:
+            ptoart_weights.pt, seg_model_384.pb   cartoon avatar generator (MIT) + face segmentation
+            styles\                              all looks and whole-image styles: AnimeGANv2/v3
+                                                 (non-commercial use only) and DCT-Net (Apache-2.0)
+            upscale\                             Real-ESRGAN super-resolution (BSD-3)
+            torch\                               face detector (BSD-3)
+          Licence files for each set are in the same folders.
+
+          Development builds from GitHub Actions contain only the torch folder. For those, copy the
+          files above from the Release page into this folder (styles and upscale zips unzipped into
+          styles\ and upscale\).
+          '@ | Set-Content dist/ptoart/weights/README.txt
           "Source commit: $env:GITHUB_SHA" | Set-Content dist/ptoart/BUILD.txt
           Compress-Archive -Path dist/ptoart -DestinationPath dist/ptoart-windows-x64.zip -CompressionLevel Optimal
           $hash = (Get-FileHash dist/ptoart-windows-x64.zip -Algorithm SHA256).Hash.ToLower()
@@ -122,7 +137,7 @@ jobs:
           ## Windows x64 CPU portable package (GUI)
           Download **ptoart-windows-x64** under this run's Artifacts and extract both ZIP layers.
           Keep `ptoart.exe` together with the `_internal` folder; no Python installation is required.
-          No official model weights are bundled. SFD is the default detector; dlib and CUDA are not included.
+          This development build bundles only the face detector; the Release ZIP (release.yml) also bundles every model in weights/. SFD is the default detector; dlib and CUDA are not included.
           Frozen random-weight inference and synthetic segmentation passed; real-photo official-weight end-to-end inference is not validated.
           Double-click ptoart.exe to open the GUI; see README-WINDOWS.md in the package.
           '@ >> $env:GITHUB_STEP_SUMMARY

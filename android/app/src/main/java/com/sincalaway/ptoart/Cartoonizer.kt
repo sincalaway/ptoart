@@ -3,6 +3,7 @@ package com.sincalaway.ptoart
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
+import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -32,6 +33,31 @@ class NoFaceException : Exception("未检测到人脸，请使用清晰的正面
 /** Which kind of ONNX file the user imported. */
 enum class ModelKind { AVATAR, STYLE, UPSCALER }
 
+/**
+ * Where a model comes from: bundled in the APK (assets/models, stored uncompressed) or
+ * imported by the user into filesDir, which overrides the bundled file of the same name.
+ */
+sealed class ModelSource {
+    /** File name without .onnx, e.g. "dct_3d"; used to pick labels and painter mode. */
+    abstract val stem: String
+    abstract fun open(env: OrtEnvironment, options: OrtSession.SessionOptions): OrtSession
+
+    data class Imported(val file: File) : ModelSource() {
+        override val stem: String get() = file.nameWithoutExtension
+        override fun open(env: OrtEnvironment, options: OrtSession.SessionOptions): OrtSession =
+            env.createSession(file.absolutePath, options)
+    }
+
+    /** Read from the APK into memory (the largest model is 18 MB); nothing is copied to storage. */
+    data class Bundled(val assets: AssetManager, val path: String) : ModelSource() {
+        override val stem: String get() = path.substringAfterLast('/').substringBeforeLast('.')
+        override fun open(env: OrtEnvironment, options: OrtSession.SessionOptions): OrtSession {
+            val bytes = assets.open(path).use { it.readBytes() }
+            return env.createSession(bytes, options)
+        }
+    }
+}
+
 object ModelInspector {
     /** The avatar generator has a fixed [1,3,256,256] input; AnimeGANv2 styles have dynamic H and W. */
     fun kindOf(file: File): ModelKind {
@@ -54,9 +80,9 @@ private fun sessionOptions() = OrtSession.SessionOptions().apply {
 /**
  * Real-ESRGAN compact x4 upscaler (tools/export_upscalers.py): NCHW RGB in [0,1], 4x output.
  */
-class Upscaler(modelFile: File) : Closeable {
+class Upscaler(model: ModelSource) : Closeable {
     private val env = OrtEnvironment.getEnvironment()
-    private val session = env.createSession(modelFile.absolutePath, sessionOptions())
+    private val session = model.open(env, sessionOptions())
     private val inputName = session.inputNames.first()
     private val outputName = session.outputNames.first()
     val scale = session.metadata.customMetadata["ptoart_scale"]?.toIntOrNull() ?: 4
@@ -94,9 +120,9 @@ class Upscaler(modelFile: File) : Closeable {
  * Whole-image style generator: NCHW RGB in [-1,1], any size. Sides are rounded to a
  * multiple of 8, or of the model's `ptoart_multiple` metadata (16 for DCT-Net).
  */
-class StyleModel(modelFile: File) : Closeable {
+class StyleModel(model: ModelSource) : Closeable {
     private val env = OrtEnvironment.getEnvironment()
-    private val session = env.createSession(modelFile.absolutePath, sessionOptions())
+    private val session = model.open(env, sessionOptions())
     private val inputName = session.inputNames.first()
     private val outputName = session.outputNames.first()
     private val multiple = max(8, session.metadata.customMetadata["ptoart_multiple"]?.toIntOrNull() ?: 8)
@@ -144,7 +170,7 @@ class StyleModel(modelFile: File) : Closeable {
  * person mask (ML Kit selfie segmentation, replaces seg_model_384.pb) ->
  * ptoart avatar ONNX generator [1,3,256,256] in [-1,1].
  */
-class Cartoonizer(modelFile: File, private val painter: Boolean = false) : Closeable {
+class Cartoonizer(model: ModelSource, private val painter: Boolean = false) : Closeable {
     /**
      * Generator side: 256 for the ptoart avatar model; for a face painter its
      * `ptoart_face_side` metadata (288 for DCT-Net heads), else 512 (AnimeGAN).
@@ -178,7 +204,7 @@ class Cartoonizer(modelFile: File, private val painter: Boolean = false) : Close
     private class FaceCrop(val bitmap: Bitmap, val toCrop: Matrix)
 
     init {
-        session = env.createSession(modelFile.absolutePath, sessionOptions())
+        session = model.open(env, sessionOptions())
         require(session.inputNames.size == 1) { "模型应只有一个输入" }
         inputName = session.inputNames.first()
         outputName = session.outputNames.firstOrNull { it == "output" } ?: session.outputNames.first()
