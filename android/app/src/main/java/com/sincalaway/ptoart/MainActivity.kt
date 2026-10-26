@@ -49,7 +49,10 @@ class MainActivity : AppCompatActivity() {
         "celeba_distill" to "CelebA 蒸馏", "face_paint_512_v1" to "Face Paint v1",
         "face_paint_512_v2" to "Face Paint v2", "hayao_v3" to "宫崎骏 v3", "shinkai_v3" to "新海诚 v3",
         "ghibli_face" to "吉卜力人像", "jp_face" to "日漫二次元", "portrait_sketch" to "黑白素描",
+        "dct_anime_bg" to "DCT 日漫", "dct_3d" to "DCT 3D", "dct_handdrawn_bg" to "DCT 手绘",
     )
+    /** DCT-Net head models paint faces only; their *_bg twins are the whole-image styles. */
+    private val headOnly = setOf("dct_anime", "dct_handdrawn")
 
     private val pickModel = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isEmpty()) return@registerForActivityResult
@@ -142,7 +145,8 @@ class MainActivity : AppCompatActivity() {
             val previous = currentMode?.label
             modes = buildList {
                 // AnimeGANv2 face painter keeps faces natural (better on children); listed first.
-                val looks = listOf("face_paint_512_v2" to "动漫脸（推荐）", "jp_face" to "日漫二次元",
+                val looks = listOf("face_paint_512_v2" to "动漫脸（推荐）", "dct_anime" to "DCT 日漫",
+                    "dct_3d" to "DCT 3D", "dct_handdrawn" to "DCT 手绘", "jp_face" to "日漫二次元",
                     "ghibli_face" to "吉卜力人像", "portrait_sketch" to "黑白素描")
                 for ((stem, look) in looks) {
                     val painter = File(styleDir, "$stem.onnx")
@@ -154,7 +158,8 @@ class MainActivity : AppCompatActivity() {
                     add(Mode.Face("卡通头像 · 经典卡通", modelFile))
                     add(Mode.Photo("整张照片 · 经典卡通", modelFile))
                 }
-                styleDir.listFiles { f -> f.extension == "onnx" }?.sortedBy { it.name }?.forEach {
+                styleDir.listFiles { f -> f.extension == "onnx" && f.nameWithoutExtension !in headOnly }
+                    ?.sortedBy { it.name }?.forEach {
                     add(Mode.Style("整图风格：${styleNames[it.nameWithoutExtension] ?: it.nameWithoutExtension}", it))
                 }
             }

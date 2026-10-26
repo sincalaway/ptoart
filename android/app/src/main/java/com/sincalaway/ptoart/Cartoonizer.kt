@@ -91,18 +91,20 @@ class Upscaler(modelFile: File) : Closeable {
 }
 
 /**
- * Whole-image AnimeGANv2-style generator: NCHW RGB in [-1,1], any size (multiples of 4).
+ * Whole-image style generator: NCHW RGB in [-1,1], any size. Sides are rounded to a
+ * multiple of 8, or of the model's `ptoart_multiple` metadata (16 for DCT-Net).
  */
 class StyleModel(modelFile: File) : Closeable {
     private val env = OrtEnvironment.getEnvironment()
     private val session = env.createSession(modelFile.absolutePath, sessionOptions())
     private val inputName = session.inputNames.first()
     private val outputName = session.outputNames.first()
+    private val multiple = max(8, session.metadata.customMetadata["ptoart_multiple"]?.toIntOrNull() ?: 8)
 
     fun stylize(photo: Bitmap, strength: Float, maxSide: Int = 1024): Bitmap {
         val scale = min(1f, maxSide.toFloat() / max(photo.width, photo.height))
-        val w = max(8, (photo.width * scale / 8).roundToInt() * 8)
-        val h = max(8, (photo.height * scale / 8).roundToInt() * 8)
+        val w = max(multiple, (photo.width * scale / multiple).roundToInt() * multiple)
+        val h = max(multiple, (photo.height * scale / multiple).roundToInt() * multiple)
         val small = Bitmap.createScaledBitmap(photo, w, h, true)
         val plane = w * h
         val px = IntArray(plane).also { small.getPixels(it, 0, w, 0, 0, w, h) }
@@ -143,8 +145,11 @@ class StyleModel(modelFile: File) : Closeable {
  * ptoart avatar ONNX generator [1,3,256,256] in [-1,1].
  */
 class Cartoonizer(modelFile: File, private val painter: Boolean = false) : Closeable {
-    /** Generator side: 256 for the ptoart avatar model, 512 for an AnimeGANv2 face painter. */
-    private val n = if (painter) 512 else 256
+    /**
+     * Generator side: 256 for the ptoart avatar model; for a face painter its
+     * `ptoart_face_side` metadata (288 for DCT-Net heads), else 512 (AnimeGAN).
+     */
+    private val n: Int
 
     /** Optional super-resolution for enlarging the 256px cartoon; owned by the caller. */
     var upscaler: Upscaler? = null
@@ -177,6 +182,7 @@ class Cartoonizer(modelFile: File, private val painter: Boolean = false) : Close
         require(session.inputNames.size == 1) { "模型应只有一个输入" }
         inputName = session.inputNames.first()
         outputName = session.outputNames.firstOrNull { it == "output" } ?: session.outputNames.first()
+        n = if (painter) session.metadata.customMetadata["ptoart_face_side"]?.toIntOrNull() ?: 512 else 256
     }
 
     /**

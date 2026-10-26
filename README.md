@@ -4,7 +4,7 @@
 
 **第一次用？看 [小白使用教程](docs/QUICKSTART.md)** · [English](README_EN.md) · [Windows 便携版说明](packaging/WINDOWS-README.md) · [模型准备](docs/MODELS.md) · [模型下载（Release）](https://github.com/sincalaway/ptoart/releases/latest)
 
-> 当前版本 0.3.8。Windows 双击即开图形界面，安卓 App 导入模型即可用；所有模型都在 [Release](https://github.com/sincalaway/ptoart/releases/latest) 中下载。
+> 当前版本 0.3.9（新增阿里达摩院 DCT-Net 画风：DCT 日漫 / DCT 3D / DCT 手绘，宝宝和儿童照片不变形）。Windows 双击即开图形界面，安卓 App 导入模型即可用；所有模型都在 [Release](https://github.com/sincalaway/ptoart/releases/latest) 中下载。
 
 ## 先了解能做什么
 
@@ -31,17 +31,22 @@
 
 自己转换：`python tools/export_styles.py -o weights/styles`（v2）和 `python tools/export_styles_v3.py -o weights/styles`（v3）。**AnimeGANv2/v3 权重仅限非商业用途。**
 
-头像和整张照片模式有 5 种「画风」（GUI 下拉框，命令行用 `--style`）：
+头像和整张照片模式有 8 种「画风」（GUI 左侧画风列表，命令行用 `--look`；旧的 `--style` 写法照常可用）：
 
-| 画风 | `--style` | 特点 |
-| --- | --- | --- |
-| 动漫脸（推荐，默认） | `face_paint_512_v2` | 五官自然不变形，儿童、老人都适合 |
-| 日漫二次元 | `jp_face` | 大眼睛、二次元脸 |
-| 吉卜力人像 | `ghibli_face` | 柔和手绘油彩感 |
-| 黑白素描 | `portrait_sketch` | 黑白线稿 |
-| 经典卡通 | 不加 `--style` | photo2cartoon 原版，线条夸张，儿童照片易变形 |
+| 画风 | `--look` | 模型文件 | 特点 |
+| --- | --- | --- | --- |
+| 动漫脸（推荐，默认） | `paint` | `face_paint_512_v2` | 五官自然不变形，儿童、老人都适合 |
+| DCT 日漫 | `dct_anime` | `dct_anime` + `dct_anime_bg` | 阿里达摩院 DCT-Net，清爽日漫脸，宝宝、儿童不变形；整张照片模式连背景一起变 |
+| DCT 3D | `dct_3d` | `dct_3d` | DCT-Net 3D 动画电影质感，最像本人，儿童照片推荐 |
+| DCT 手绘 | `dct_handdrawn` | `dct_handdrawn` + `dct_handdrawn_bg` | DCT-Net 手绘插画感 |
+| 日漫二次元 | `jp` | `jp_face` | 大眼睛、二次元脸 |
+| 吉卜力人像 | `ghibli` | `ghibli_face` | 柔和手绘油彩感 |
+| 黑白素描 | `sketch` | `portrait_sketch` | 黑白线稿 |
+| 经典卡通 | `classic`（或不加 `--style`） | `ptoart_weights.pt/.onnx` | photo2cartoon 原版，线条夸张，儿童照片易变形 |
 
-前四种画风以 512 分辨率推理；经典卡通生成器只在 256×256 推理。更大的 `--size` 默认用 Lanczos + 轻度锐化放大；加 `--upscale anime` 则用 Real-ESRGAN 超分，能补出清晰线条。透明边缘和强度混合始终使用原分辨率。重构未消除上游训练数据的人群偏差。
+DCT 画风在 `ptoart-dctnet.zip` 里（与风格包解压到同一个 `weights\styles\`）。DCT-Net 自带头部/背景两个模型：头像模式把对齐后的人脸裁图按 DCT-Net 的 288×288 头部模型推理；整张照片模式先用背景模型把整张图卡通化，再把头部结果按人像分割羽化贴回，和 DCT-Net 官方流程一致（人脸检测、对齐沿用 ptoart 自己的）。DCT 背景模型也作为整图风格「DCT 日漫 / DCT 3D / DCT 手绘」出现。自己转换：`python tools/export_dctnet.py -o weights/styles`（需要 `tensorflow==2.15.*`、`tf2onnx`）。
+
+AnimeGAN 画风以 512 分辨率推理；经典卡通生成器只在 256×256 推理。更大的 `--size` 默认用 Lanczos + 轻度锐化放大；加 `--upscale anime` 则用 Real-ESRGAN 超分，能补出清晰线条。透明边缘和强度混合始终使用原分辨率。重构未消除上游训练数据的人群偏差。
 
 | 你想怎么用 | 从哪里开始 |
 | --- | --- |
@@ -60,6 +65,7 @@
 | `seg_model_384.pb` | 约 32 MB | 人像分割（Windows 头像/整张照片模式必需） | `weights\` | 不需要（用内置 ML Kit） |
 | `ptoart_weights.onnx` | 约 18 MB | 卡通头像生成器（ONNX，安卓必需；Windows 加 `--backend onnx` 时用） | `weights\`（可选） | 导入 |
 | `ptoart-styles.zip` | 约 71 MB | 11 种风格（含动漫脸、日漫二次元、吉卜力人像、黑白素描 4 种头像画风） | 解压到 `weights\styles\` | 解压后多选导入 |
+| `ptoart-dctnet.zip` | 约 27 MB | DCT-Net 画风：DCT 日漫、DCT 3D、DCT 手绘（Apache-2.0，可商用） | 解压到 `weights\styles\` | 解压后多选导入 |
 | `ptoart-upscalers-realesrgan.zip` | 约 7 MB | 超分辨率放大：`anime`（卡通，快）、`general`（通用） | 解压到 `weights\upscale\` | 导入一个（推荐 anime） |
 
 目录示例：
@@ -72,21 +78,21 @@ C:\ptoart\
     ├── ptoart_weights.pt
     ├── seg_model_384.pb
     ├── ptoart_weights.onnx      # 可选
-    ├── styles\hayao.onnx、jp_face.onnx …  # 风格和画风（11 个）
+    ├── styles\hayao.onnx、jp_face.onnx、dct_3d.onnx …  # 风格和画风（含 DCT-Net）
     ├── upscale\anime.onnx、general.onnx  # 超分
     └── torch\                             # 人脸检测模型，已随 Windows 包附带，勿删
 ```
 
 只想用整图风格时，只需要 `styles` 里的模型，不需要 `.pt`/`.pb`。训练用的 `model_mobilefacenet.pth` 和 `cartoon_data` 训练图片不放进 Release，普通使用都不需要（需要训练可从[光鸭云盘](https://www.guangyapan.com/s/1961241077160239155_alCCcsK8loJ3qRN9)或[上游资源包](docs/MODELS.md)获取）。
 
-许可：卡通头像权重来自 [minivision-ai/photo2cartoon](https://github.com/minivision-ai/photo2cartoon)（MIT）；超分模型来自 [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)（BSD-3）；**AnimeGANv2 / AnimeGANv3 风格权重仅限非商业用途**。
+许可：卡通头像权重来自 [minivision-ai/photo2cartoon](https://github.com/minivision-ai/photo2cartoon)（MIT）；DCT 画风来自阿里达摩院 [DCT-Net](https://github.com/menyifang/DCT-Net)（[ModelScope](https://modelscope.cn/models/damo/cv_unet_person-image-cartoon_compound-models)，Apache-2.0）；超分模型来自 [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)（BSD-3）；**AnimeGANv2 / AnimeGANv3 风格权重仅限非商业用途**。
 
 ## 安卓 App
 
 1. 在 [Releases](https://github.com/sincalaway/ptoart/releases) 下载 `ptoart-android.apk` 安装（Android 7.0+，需允许安装未知来源应用；APK 为调试签名）。
 2. 在同一 Release 下载 **`ptoart_weights.onnx`** 存到手机，在 App 中点「导入模型」选中它（模型不随 App 分发）。
 3. 想要整图风格或更清晰的头像，把 `ptoart-styles.zip`、`ptoart-upscalers-realesrgan.zip` 解压后，在「导入模型」里多选导入（App 自动识别模型类型）。导入超分模型后会出现「超分辨率增强」开关。
-4. 选照片，在下拉框选模式：「卡通头像」（512×512，可透明背景）、「整张照片」（所有人脸卡通化贴回原图）或「整图风格：宫崎骏/新海诚/…」；导入风格包后头像和整张照片会多出「动漫脸（推荐）」「日漫二次元」「吉卜力人像」「黑白素描」画风。调强度后转换并保存 PNG。
+4. 选照片，在下拉框选模式：「卡通头像」（512×512，可透明背景）、「整张照片」（所有人脸卡通化贴回原图）或「整图风格：宫崎骏/新海诚/…」；导入风格包后头像和整张照片会多出「动漫脸（推荐）」「日漫二次元」「吉卜力人像」「黑白素描」画风；导入 `ptoart-dctnet.zip` 里的模型后多出「DCT 日漫」「DCT 3D」「DCT 手绘」（安卓的整张照片模式只把脸换成 DCT 画风，背景保持写实）。调强度后转换并保存 PNG。
 
 安卓版全程离线：人脸检测与人像分割使用打包进 APK 的 Google ML Kit 模型，卡通生成使用 ONNX Runtime。裁剪与对齐策略与桌面版近似但不完全一致，效果可能略有差异。
 
@@ -126,9 +132,9 @@ Windows 包已内置 face-alignment 的 SFD 检测器和 2DFAN4 关键点权重�
 
 1. 双击 `ptoart.exe`，打开图形界面（首次启动约 10–30 秒）。左下角显示模型状态，✓ 表示已就绪；缺模型时点「打开模型文件夹」放入文件，再点「重新检测模型」。
 2. 点「＋ 选择照片」，可一次多选。
-3. 选效果：「卡通头像」「整张照片」（所有人脸卡通化贴回原图）或「整图风格」（再选宫崎骏、新海诚等）。头像和整张照片再选「画风」：动漫脸（推荐）、日漫二次元、吉卜力人像、黑白素描、经典卡通。
+3. 选效果：「卡通头像」「整张照片」（所有人脸卡通化贴回原图）或「整图风格」（再选宫崎骏、新海诚等）。头像和整张照片再在「头像画风」列表里点选（选中的一项会变成蓝底并带 ✓，窗口顶部写着「✓ 头像画风：…」）：动漫脸（推荐）、DCT 日漫、DCT 3D、DCT 手绘、日漫二次元、吉卜力人像、黑白素描、经典卡通。给宝宝、儿童照片推荐 **DCT 3D** 或 **DCT 日漫**。
 4. 按需调整：头像尺寸 512 / 1024 / 2048、卡通强度、透明背景、超分辨率增强。
-5. 点「开始转换 →」。每次的结果都会**自动保存**到照片旁的 `ptoart输出` 文件夹（窗口底部显示完整路径，点「打开输出文件夹」直接打开）；「↶ 撤销 / ↷ 重做」在几次结果间切换，「另存为…」存到别处。效果图上方会写明用的是哪个模式、画风和强度；改了设置后按钮会变成「应用新设置」。
+5. 点「开始转换 →」。每次的结果都会**自动保存**到照片旁的 `ptoart输出` 文件夹（窗口底部显示完整路径）。窗口顶部工具栏：「↶ 撤销 Ctrl+Z」「↷ 重做 Ctrl+Y」在几次结果间切换（没有可撤销/重做时按钮变灰），「保存 Ctrl+S」确认当前结果已存盘并显示保存位置，「另存为…」存到别处，「打开输出文件夹」直接打开。效果图上方写明用的是哪个模式、画风和强度；出图后再改设置，会出现黄色提示「设置已更改」和「用新设置重新生成」按钮。
 
 人脸检测模型已打包在 `weights\torch` 里，无需联网；程序启动时在后台加载一次，之后切换画风、强度都不再重新加载。Windows 提示“已保护你的电脑”时，点「更多信息 → 仍要运行」（程序未签名）。
 
@@ -188,6 +194,9 @@ cd "C:\ptoart"
 .\ptoart.exe convert .\group.jpg .\output\group.jpg --output photo --model-dir .\weights --device cpu
 # 整图风格（模型放在 weights\styles\hayao.onnx）
 .\ptoart.exe convert .\street.jpg .\output\street-hayao.jpg --style hayao --model-dir .\weights
+# 换画风：DCT-Net 3D 头像、DCT 日漫整张照片（背景一起卡通化）
+.\ptoart.exe convert .\baby.jpg .\output\baby-3d.png --look dct_3d --size 1024 --model-dir .\weights
+.\ptoart.exe convert .\baby.jpg .\output\baby-anime.jpg --look dct_anime --output photo --model-dir .\weights
 ```
 
 整图风格只依赖 ONNX Runtime，不需要人脸模型；`--style-max-side`（默认 1536）控制推理分辨率，越大越清晰也越慢。
@@ -351,6 +360,8 @@ python -m build
 官方权重端到端推理、Torch/ONNX 视觉与数值一致性、首次资产下载、GPU、持续运行性能和训练仍需实际验证。
 
 ## 来源与许可
+
+DCT 画风使用阿里巴巴达摩院 [DCT-Net](https://github.com/menyifang/DCT-Net)（Men Yifang 等，SIGGRAPH 2022）在 [ModelScope](https://modelscope.cn/models/damo/cv_unet_person-image-cartoon_compound-models) 发布的 anime / 3d / handdrawn 权重，Apache License 2.0；本项目仅把 TensorFlow 冻结图转换为 ONNX（权重未改动），`ptoart-dctnet.zip` 内附许可全文和修改说明。
 
 保留上游 MIT [LICENSE](LICENSE)，上游基线为 `6204e27a71620500c2f5b2ffd36646b0e2e5c110`。原中英文说明存档于 `docs/UPSTREAM_README_*.md`，其中相对链接是上游历史记录，当前使用以本文为准。
 

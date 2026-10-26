@@ -79,7 +79,12 @@ class OnnxBackend:
 
 
 class StyleBackend:
-    """Whole-image AnimeGANv2-style ONNX generator: NCHW [-1,1] in and out, any size."""
+    """Whole-image style ONNX generator: NCHW [-1,1] in and out, any size.
+
+    Optional ``metadata_props`` (written by tools/export_dctnet.py): ``ptoart_multiple``,
+    the side multiple the graph needs (default 8), and ``ptoart_face_side``, the square
+    size the model expects when it paints a face crop (default 512).
+    """
 
     def __init__(self, model_path):
         require_file(model_path)
@@ -94,6 +99,9 @@ class StyleBackend:
                 raise ValueError(f"Expected one NCHW RGB input, got {inputs[0].shape}")
             self.input_name = inputs[0].name
             self.output_name = self.session.get_outputs()[0].name
+            meta = self.session.get_modelmeta().custom_metadata_map
+            self.multiple = max(8, int(meta.get("ptoart_multiple", 8)))
+            self.face_side = int(meta.get("ptoart_face_side", 512))
         except Exception as exc:
             raise ModelError(f"Unable to load style model {model_path}: {exc}") from exc
 

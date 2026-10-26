@@ -48,6 +48,25 @@ python tools/export_styles_v3.py -o weights/styles                 # AnimeGANv3�
 
 导出的 ONNX 输入 `input`、输出 `output`，NCHW RGB，取值 [-1,1]，高宽可变（建议 4 的倍数）；脚本会在两种尺寸下与 PyTorch 比对。`face_paint_*` 针对人像训练，对风景效果一般。**AnimeGANv2 权重仅限非商业用途**，商用需联系原作者授权。
 
+## DCT-Net 画风（DCT 日漫 / DCT 3D / DCT 手绘）
+
+Release 资产 `ptoart-dctnet.zip`，解压到 `weights/styles`。自行生成：
+
+```bash
+pip install "tensorflow==2.15.*" "tf2onnx==1.16.1" "onnx==1.16.*" "numpy<2" onnxruntime
+python tools/export_dctnet.py -o weights/styles            # anime、3d、handdrawn
+```
+
+来源：阿里巴巴达摩院 [DCT-Net](https://github.com/menyifang/DCT-Net)，权重来自 ModelScope `damo/cv_unet_person-image-cartoon_compound-models`（anime）、`…-3d_compound-models`、`…-handdrawn_compound-models`，均为 **Apache-2.0**。脚本下载上游 TensorFlow 冻结图 `cartoon_h.pb`（头部）和 `cartoon_bg.pb`（背景），先核对 ModelScope 公布的 SHA-256，再用 tf2onnx 转换，并包一层输入输出变换，使其与其他风格相同：NCHW RGB，取值 [-1,1]，输入 `input`、输出 `output`；转换后与 TensorFlow 输出逐像素比对（误差不超过 1 个灰度级）。元数据 `ptoart_multiple=16`（边长须为 16 的倍数）、头部模型另有 `ptoart_face_side=288`。
+
+| 文件 | 用途 |
+| --- | --- |
+| `dct_anime.onnx` / `dct_anime_bg.onnx` | DCT 日漫：头部 / 背景（整张照片、整图风格） |
+| `dct_3d.onnx` | DCT 3D（上游头部与背景模型相同，只有一个文件） |
+| `dct_handdrawn.onnx` / `dct_handdrawn_bg.onnx` | DCT 手绘：头部 / 背景 |
+
+头像模式：ptoart 自己检测、对齐、裁出人脸，缩放到 288×288 交给头部模型。整张照片模式：背景模型先处理整张图（`--style-max-side` 控制分辨率），再把头部结果按人像分割羽化贴回，与 DCT-Net 官方 `cartoonize.py` 的“背景 + 头部”流程一致。
+
 ## 超分辨率模型（Real-ESRGAN）
 
 ```bash

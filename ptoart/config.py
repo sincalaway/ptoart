@@ -22,6 +22,7 @@ class ArtConfig:
     style: str | None = None
     style_max_side: int = 1536
     upscale: str | None = None
+    scene_style: str | None = None  # photo output: stylize the whole photo first (DCT-Net looks)
 
     def __post_init__(self):
         if self.backend not in {"torch", "onnx"}:
@@ -44,6 +45,8 @@ class ArtConfig:
             raise ValueError("max_faces must be between 1 and 50")
         if self.output == "photo" and self.aligned:
             raise ValueError("photo output needs face detection; it cannot be combined with aligned")
+        if self.scene_style and self.output != "photo":
+            raise ValueError("scene_style is only used with photo output")
         if self.max_pixels < 1:
             raise ValueError("max_pixels must be positive")
         if self.background is not None and (
@@ -60,6 +63,11 @@ class ArtConfig:
             if candidate.suffix.lower() != ".onnx":
                 candidate = root / "styles" / f"{self.style}.onnx"
             object.__setattr__(self, "style", candidate.resolve())
+        if self.scene_style:
+            candidate = Path(self.scene_style).expanduser()
+            if candidate.suffix.lower() != ".onnx":
+                candidate = root / "styles" / f"{self.scene_style}.onnx"
+            object.__setattr__(self, "scene_style", candidate.resolve())
         if self.upscale:
             candidate = Path(self.upscale).expanduser()
             if candidate.suffix.lower() != ".onnx":

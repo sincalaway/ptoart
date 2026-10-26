@@ -9,6 +9,7 @@ from . import __version__
 from .config import ArtConfig
 from .errors import PtoartError
 from .io import SUPPORTED, read_image, write_image
+from .looks import FACE_LOOKS, LOOK_HINTS, LOOK_SCENES
 
 
 def parse_background(value):
@@ -42,6 +43,13 @@ def add_options(parser):
                                         "celeba_distill, face_paint_512_v1, face_paint_512_v2) or a .onnx path. "
                                         "With --output face/photo it paints the faces instead of the "
                                         "default generator (face_paint_512_v2 recommended)")
+    parser.add_argument("--look", choices=list(FACE_LOOKS),
+                        help="Face look for --output face/photo: " + "; ".join(
+                            f"{k} = {FACE_LOOKS[k][0]} ({LOOK_HINTS[k]})" for k in FACE_LOOKS)
+                        + ". dct_* looks are DCT-Net (Apache-2.0); with --output photo they also "
+                          "stylize the background. Overrides --style for face/photo")
+    parser.add_argument("--scene-style", help="--output photo: style name or .onnx that stylizes the whole "
+                                              "photo before faces are pasted (set automatically by dct_* looks)")
     parser.add_argument("--upscale", help="Super-resolution model in <model-dir>/upscale (anime, general) "
                                           "or a .onnx path; used when output is larger than the model's")
     parser.add_argument("--style-max-side", type=int, default=1536,
@@ -55,13 +63,30 @@ def config_from(args):
             "detector", "background", "strength", "max_pixels", "output", "size", "max_faces",
             "style", "style_max_side", "upscale")
     values = {key: getattr(args, key) for key in keys}
+    look = getattr(args, "look", None)
     if values["output"] is None:
-        values["output"] = "style" if values["style"] else "face"
+        values["output"] = "style" if values["style"] and not look else "face"
+    values["scene_style"] = getattr(args, "scene_style", None)
+    if look:
+        if values["output"] == "style":
+            raise ValueError("--look applies to --output face or photo, not style")
+        values["style"] = FACE_LOOKS[look][1]
+        if values["output"] == "photo" and not values["scene_style"] and look in LOOK_SCENES:
+            values["scene_style"] = resolve_scene(args.model_dir, look)
     config = ArtConfig(**values)
     from ptoart.gui import use_bundled_torch_hub
 
     use_bundled_torch_hub(config.model_dir)
     return config
+
+
+def resolve_scene(model_dir, look):
+    """Background model for a DCT-Net look: its *_bg file when present, else the head model."""
+    from .looks import scene_for
+
+    root = ArtConfig(model_dir=model_dir).model_dir / "styles"
+    available = {p.stem for p in root.glob("*.onnx")} if root.is_dir() else set()
+    return scene_for(look, available) or LOOK_SCENES[look]
 
 
 def doctor(config):
@@ -73,13 +98,16 @@ def doctor(config):
         return {"version": __version__, "output": "style", "dependencies": dependencies, "models": models,
                 "ready": all(dependencies.values()) and all(models.values()),
                 "note": "Presence checks only; not a model-load or inference validation."}
-    packages = ["numpy", "cv2", "PIL", "torch" if config.backend == "torch" else "onnxruntime"]
+    packages = ["numpy", "cv2", "PIL", "onnxruntime" if config.style or config.backend == "onnx" else "torch"]
     if not config.aligned:
         packages += ["face_alignment", "tensorflow"]
         if config.detector == "dlib":
             packages.append("dlib")
     dependencies = {p: importlib.util.find_spec(p) is not None for p in packages}
-    weights = {str(config.weights): config.weights.is_file()}
+    weights = ({str(config.style): config.style.is_file()} if config.style
+               else {str(config.weights): config.weights.is_file()})
+    if config.scene_style:
+        weights[str(config.scene_style)] = config.scene_style.is_file()
     if not config.aligned:
         weights[str(config.segmentation)] = config.segmentation.is_file()
     if config.upscale:

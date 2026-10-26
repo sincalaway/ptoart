@@ -24,6 +24,7 @@ class ArtPipeline:
         self.upscaler = upscaler
         self.closed = False
         self.face_painter = None
+        self.scene = None
         try:
             if self.upscaler is None and self.config.upscale is not None:
                 self.upscaler = UpscaleBackend(self.config.upscale)
@@ -31,10 +32,14 @@ class ArtPipeline:
                 self.backend = backend if backend is not None else StyleBackend(self.config.style)
                 return
             if self.config.style is not None:
-                # Face/photo modes with a style: AnimeGANv2 face painter replaces the generator.
+                # Face/photo modes with a style: a face painter (AnimeGAN or DCT-Net head)
+                # replaces the generator.
                 self.face_painter = StyleBackend(self.config.style)
             elif backend is None:
                 require_file(self.config.weights)
+            if self.config.output == "photo" and self.config.scene_style is not None:
+                # DCT-Net looks: the whole photo is stylized first, then faces are pasted on top.
+                self.scene = StyleBackend(self.config.scene_style)
             if not self.config.aligned and self.preprocessor is None:
                 require_file(self.config.segmentation)
                 try:
@@ -113,8 +118,13 @@ class ArtPipeline:
             raise ModelError(f"Inference failed: {exc}") from exc
         return (output[0].transpose(1, 2, 0) + 1) * 127.5
 
-    def _paint_face(self, rgba, side=512):
-        """AnimeGANv2 face painter on the raw crop (keeps proportions; no white compositing)."""
+    def _paint_face(self, rgba, side=None):
+        """Face painter on the raw crop (keeps proportions; no white compositing).
+
+        The crop is resized to the painter's own face size: 512 for AnimeGAN painters,
+        288 for DCT-Net heads (read from the model's ``ptoart_face_side`` metadata).
+        """
+        side = side or getattr(self.face_painter, "face_side", None) or 512
         interpolation = cv2.INTER_AREA if rgba.shape[0] >= side else cv2.INTER_CUBIC
         rgb = cv2.resize(rgba[:, :, :3], (side, side), interpolation=interpolation)
         tensor = np.ascontiguousarray((rgb.astype(np.float32) / 127.5 - 1).transpose(2, 0, 1)[None])
@@ -174,7 +184,10 @@ class ArtPipeline:
         if not regions:
             raise NoFaceError("No face detected; use a clear, front-facing portrait")
         height, width = image.shape[:2]
-        result = image.astype(np.float32)
+        if self.scene is not None:
+            result = self._stylize(self.scene, image).astype(np.float32)
+        else:
+            result = image.astype(np.float32)
         # Paint smaller faces first so the largest face wins any overlap.
         for region in reversed(list(regions)):
             rgba = self._check_rgba(region.rgba)
@@ -196,16 +209,20 @@ class ArtPipeline:
 
     def _convert_style(self, image):
         """Stylize the whole photo; the result has the input's size."""
+        return self._stylize(self.backend, image)
+
+    def _stylize(self, backend, image):
         height, width = image.shape[:2]
         scale = min(1.0, self.config.style_max_side / max(height, width))
-        # AnimeGANv3 downsamples three times; keep sides multiples of 8.
-        h = max(8, int(round(height * scale / 8)) * 8)
-        w = max(8, int(round(width * scale / 8)) * 8)
+        # AnimeGANv3 downsamples three times (sides multiples of 8); DCT-Net needs 16.
+        m = max(8, int(getattr(backend, "multiple", 8) or 8))
+        h = max(m, int(round(height * scale / m)) * m)
+        w = max(m, int(round(width * scale / m)) * m)
         small = cv2.resize(image, (w, h), interpolation=cv2.INTER_AREA)
         tensor = np.ascontiguousarray(
             (small.astype(np.float32) / 127.5 - 1).transpose(2, 0, 1)[None])
         try:
-            output = np.asarray(self.backend.run(tensor))
+            output = np.asarray(backend.run(tensor))
         except Exception as exc:
             raise ModelError(f"Inference failed: {exc}") from exc
         if output.shape != tensor.shape or not np.isfinite(output).all():
@@ -249,6 +266,10 @@ class ArtPipeline:
             try:
                 if self.backend is not None and hasattr(self.backend, "close"):
                     self.backend.close()
+                if self.scene is not None and hasattr(self.scene, "close"):
+                    self.scene.close()
+                if self.face_painter is not None and hasattr(self.face_painter, "close"):
+                    self.face_painter.close()
             finally:
                 if self.upscaler is not None and hasattr(self.upscaler, "close"):
                     self.upscaler.close()

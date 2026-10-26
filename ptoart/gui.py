@@ -12,6 +12,8 @@ import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ptoart.looks import FACE_LOOKS, HEAD_ONLY_STYLES, LOOK_HINTS, scene_for  # noqa: F401 (re-exported)
+
 STYLE_NAMES = {
     "hayao": "宫崎骏",
     "shinkai": "新海诚",
@@ -24,24 +26,16 @@ STYLE_NAMES = {
     "ghibli_face": "吉卜力人像",
     "jp_face": "日漫二次元",
     "portrait_sketch": "黑白素描",
+    "dct_anime_bg": "DCT 日漫",
+    "dct_3d": "DCT 3D",
+    "dct_handdrawn_bg": "DCT 手绘",
+    "dct_anime": "DCT 日漫（仅脸部）",
+    "dct_handdrawn": "DCT 手绘（仅脸部）",
 }
 UPSCALE_NAMES = {"anime": "动漫（快）", "general": "通用（细节多）"}
 MODES = {"face": "卡通头像", "photo": "整张照片", "style": "整图风格"}
-# Face looks for avatar/whole-photo modes: key -> (label, style model or None for the ptoart generator).
-LOOK_HINTS = {
-    "paint": "五官自然不变形，儿童、老人都好看",
-    "jp": "大眼睛二次元脸",
-    "ghibli": "柔和手绘油彩感",
-    "sketch": "黑白线稿",
-    "classic": "原版卡通，线条夸张；儿童照片可能变形",
-}
-FACE_LOOKS = {
-    "paint": ("动漫脸（推荐）", "face_paint_512_v2"),
-    "jp": ("日漫二次元", "jp_face"),
-    "ghibli": ("吉卜力人像", "ghibli_face"),
-    "sketch": ("黑白素描", "portrait_sketch"),
-    "classic": ("经典卡通", None),
-}
+# Face looks (key -> (label, style model or None for the ptoart generator)) and their
+# hints live in ptoart/looks.py so the CLI shares them.
 IMAGE_TYPES = (("图片", "*.jpg *.jpeg *.png *.bmp *.webp"), ("所有文件", "*.*"))
 
 
@@ -61,6 +55,11 @@ class Models:
             if (style is None and self.face) or (style is not None and self.seg and style in self.styles):
                 out.append(key)
         return out
+
+    @property
+    def whole_styles(self):
+        """Styles offered for whole-image mode (DCT-Net face-only head models left out)."""
+        return {k: v for k, v in self.styles.items() if k not in HEAD_ONLY_STYLES}
 
     @property
     def any(self):
@@ -106,18 +105,36 @@ def build_config(models, *, mode, style=None, size=1024, strength=1.0, transpare
     """Map UI choices to an ArtConfig (Windows build: CPU + SFD detector)."""
     from ptoart.config import ArtConfig
 
+    painter = FACE_LOOKS[look][1] if mode != "style" else None
+    scene = scene_for(look, models.styles) if mode == "photo" else None
     return ArtConfig(
         backend="torch", device="cpu", detector="sfd", model_dir=models.root,
         output=mode, size=size if mode == "face" else 256, strength=strength,
         background=None if (transparent and mode == "face") else (255, 255, 255),
         style=(str(models.styles[style]) if mode == "style"
-               else str(models.styles[FACE_LOOKS[look][1]]) if FACE_LOOKS[look][1] else None),
+               else str(models.styles[painter]) if painter else None),
+        scene_style=str(models.styles[scene]) if scene else None,
         upscale=str(models.upscalers[upscale]) if upscale else None,
     )
 
 
 def look_label(look):
     return FACE_LOOKS.get(look, ("经典卡通", None))[0].replace("（推荐）", "")
+
+
+def selection_summary(mode, style=None, look=None):
+    """Persistent one-line answer to "what is selected right now?"."""
+    if mode == "style":
+        return f"✓ 当前风格：{style_label(style) if style else '未选择'}  ·  模式：{MODES['style']}"
+    return f"✓ 头像画风：{look_label(look) if look else '未选择'}  ·  模式：{MODES.get(mode, mode)}"
+
+
+def stale_message(result_opts, opts):
+    """Why the shown result no longer matches the selection, or None when it still does."""
+    if not result_opts or result_opts == opts:
+        return None
+    old, new = describe_options(result_opts), describe_options(opts)
+    return f"当前效果是用「{old}」生成的，现在选的是「{new}」。"
 
 
 def output_name(source, mode, style=None, transparent=False, look=None):
@@ -233,6 +250,52 @@ def run_gui(screenshot=None):
     def font(size=13, weight="normal"):
         return ctk.CTkFont(family=FONT, size=size, weight=weight)
 
+    WARN = ("#FFF4E0", "#3A2E1A")
+    WARN_TEXT = ("#8A5A00", "#F0C060")
+    OFF = ("#E4E4EC", "#2E2E38")
+
+    class ChoiceList(ctk.CTkFrame):
+        """Vertical list of choices; the selected one is filled and marked with ✓."""
+
+        def __init__(self, parent, command=None):
+            super().__init__(parent, fg_color="transparent")
+            self.grid_columnconfigure(0, weight=1)
+            self.command = command
+            self.items = []      # [(key, label)]
+            self.buttons = {}
+            self.selected = None
+
+        def set_items(self, items, keep=True):
+            for b in self.buttons.values():
+                b.destroy()
+            self.items, self.buttons = list(items), {}
+            for i, (key, label) in enumerate(self.items):
+                b = ctk.CTkButton(self, text=label, anchor="w", height=32, font=font(13), corner_radius=8,
+                                  border_width=2, command=lambda k=key: self.select(k, notify=True))
+                b.grid(row=i, column=0, sticky="ew", pady=2)
+                self.buttons[key] = b
+            keys = [k for k, _ in self.items]
+            self.select(self.selected if keep and self.selected in keys else (keys[0] if keys else None))
+
+        def select(self, key, notify=False):
+            changed = key != self.selected
+            self.selected = key
+            for k, label in self.items:
+                on = k == key
+                self.buttons[k].configure(
+                    text=f"✓  {label}" if on else f"    {label}",
+                    fg_color=ACCENT if on else "transparent", hover_color=ACCENT_HOVER if on else BG,
+                    text_color=("#FFFFFF", "#FFFFFF") if on else ("#22222A", "#E6E6EE"),
+                    border_color=ACCENT if on else OFF, font=font(13, "bold" if on else "normal"))
+            if notify and changed and self.command:
+                self.command(key)
+
+        def get(self):
+            return self.selected
+
+        def label(self, key=None):
+            return dict(self.items).get(self.selected if key is None else key, "")
+
     class App(ctk.CTk):
         def __init__(self):
             super().__init__(fg_color=BG)
@@ -264,9 +327,9 @@ def run_gui(screenshot=None):
             self.grid_columnconfigure(1, weight=1)
             self.grid_rowconfigure(0, weight=1)
 
-            side = ctk.CTkFrame(self, width=320, corner_radius=0, fg_color=CARD)
+            # The sidebar scrolls, so every look and style stays reachable on small screens.
+            side = ctk.CTkScrollableFrame(self, width=300, corner_radius=0, fg_color=CARD)
             side.grid(row=0, column=0, sticky="nsw")
-            side.grid_propagate(False)
             side.grid_columnconfigure(0, weight=1)
             r = 0
             ctk.CTkLabel(side, text="ptoart", font=font(28, "bold"), text_color=ACCENT).grid(
@@ -297,25 +360,23 @@ def run_gui(screenshot=None):
             self.opts.grid(row=r, column=0, padx=24, sticky="ew")
             r += 1
             self.opts.grid_columnconfigure(0, weight=1)
-            self.style_menu = ctk.CTkOptionMenu(self.opts, values=["—"], font=font(13), height=34,
-                                               command=lambda _v: self._ui_check_dirty(),
-                                                fg_color=ACCENT, button_color=ACCENT_HOVER,
-                                                button_hover_color=ACCENT_HOVER, dropdown_font=font(13))
+            self.style_list = ChoiceList(self.opts,
+                                         command=lambda _k: self._ui_selection_changed("风格"))
             self.size_menu = ctk.CTkSegmentedButton(self.opts, values=["512", "1024", "2048"], font=font(13),
                                                     command=lambda _v: self._ui_check_dirty(),
                                                     selected_color=ACCENT, selected_hover_color=ACCENT_HOVER)
             self.size_menu.set("1024")
             self.size_label = ctk.CTkLabel(self.opts, text="头像尺寸（像素）", font=font(12), text_color=MUTED)
-            self.style_label = ctk.CTkLabel(self.opts, text="风格", font=font(12), text_color=MUTED)
+            self.style_label = ctk.CTkLabel(self.opts, text="风格（点一下即选中）", font=font(12),
+                                            text_color=MUTED)
             self.strength_label = ctk.CTkLabel(self.opts, text="卡通强度 100%", font=font(12), text_color=MUTED)
             self.strength = ctk.CTkSlider(self.opts, from_=0, to=100, number_of_steps=20, button_color=ACCENT,
                                           progress_color=ACCENT, command=self._ui_strength_changed)
             self.strength.set(100)
-            self.look_label = ctk.CTkLabel(self.opts, text="画风", font=font(12), text_color=MUTED)
-            self.look_menu = ctk.CTkOptionMenu(self.opts, values=["—"], font=font(13), height=34,
-                                               command=lambda _v: self._ui_check_dirty(),
-                                               fg_color=ACCENT, button_color=ACCENT_HOVER,
-                                               button_hover_color=ACCENT_HOVER, dropdown_font=font(13))
+            self.look_label = ctk.CTkLabel(self.opts, text="头像画风（点一下即选中）", font=font(12),
+                                           text_color=MUTED)
+            self.look_list = ChoiceList(self.opts,
+                                        command=lambda _k: self._ui_selection_changed("头像画风"))
             self.look_hint = ctk.CTkLabel(self.opts, text="", font=font(12), text_color=MUTED, wraplength=270,
                                           justify="left")
             self.transparent = ctk.CTkSwitch(self.opts, text="透明背景（PNG）", font=font(13),
@@ -346,40 +407,68 @@ def run_gui(screenshot=None):
                 ctk.CTkButton(links, text=text, font=font(12), height=28, fg_color="transparent",
                               text_color=ACCENT, hover_color=BG, command=cmd).pack(side="left", padx=4)
 
-            # main area
+            # main area: toolbar, before/after panels, stale-result banner, status bar
             main = ctk.CTkFrame(self, fg_color="transparent")
-            main.grid(row=0, column=1, sticky="nsew", padx=22, pady=22)
+            main.grid(row=0, column=1, sticky="nsew", padx=22, pady=(14, 22))
             main.grid_columnconfigure((0, 1), weight=1, uniform="p")
-            main.grid_rowconfigure(0, weight=1)
+            main.grid_rowconfigure(1, weight=1)
+
+            toolbar = ctk.CTkFrame(main, corner_radius=12, fg_color=CARD)
+            toolbar.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 12))
+            toolbar.grid_columnconfigure(10, weight=1)
+
+            def tool(col, text, cmd, width):
+                b = ctk.CTkButton(toolbar, text=text, width=width, height=36, font=font(13, "bold"),
+                                  corner_radius=8, fg_color=ACCENT, hover_color=ACCENT_HOVER,
+                                  text_color="#FFFFFF", text_color_disabled=MUTED, command=cmd,
+                                  state="disabled")
+                b.grid(row=0, column=col, padx=(10 if col == 0 else 0, 8), pady=10)
+                return b
+
+            self.undo_btn = tool(0, "↶ 撤销  Ctrl+Z", self._ui_undo, 128)
+            self.redo_btn = tool(1, "↷ 重做  Ctrl+Y", self._ui_redo, 128)
+            self.quick_save_btn = tool(2, "保存  Ctrl+S", self._ui_save_current, 112)
+            self.save_btn = tool(3, "另存为…", self._ui_save, 92)
+            self.folder_btn = tool(4, "打开输出文件夹", self._ui_open_output, 128)
+            self.current_label = ctk.CTkLabel(toolbar, text="", font=font(14, "bold"), text_color=ACCENT,
+                                              anchor="w")
+            self.current_label.grid(row=1, column=0, columnspan=11, sticky="w", padx=14, pady=(0, 10))
+
             self.before = self._ui_panel(main, "原图", 0)
             self.after_panel = self._ui_panel(main, "效果", 1)
 
+            self.stale_bar = ctk.CTkFrame(main, corner_radius=10, fg_color=WARN)
+            self.stale_bar.grid_columnconfigure(0, weight=1)
+            self.stale_text = ctk.CTkLabel(self.stale_bar, text="", font=font(13), text_color=WARN_TEXT,
+                                           anchor="w", justify="left", wraplength=640)
+            self.stale_text.grid(row=0, column=0, sticky="ew", padx=14, pady=8)
+            self.rerun_btn = ctk.CTkButton(self.stale_bar, text="用新设置重新生成", height=34, width=150,
+                                           font=font(13, "bold"), fg_color=ACCENT, hover_color=ACCENT_HOVER,
+                                           command=self._ui_start)
+            self.rerun_btn.grid(row=0, column=1, padx=(0, 10), pady=8)
+
             bar = ctk.CTkFrame(main, fg_color="transparent")
-            bar.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(16, 0))
+            bar.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(12, 0))
             bar.grid_columnconfigure(0, weight=1)
             self.status = ctk.CTkLabel(bar, text="选择一张照片开始", font=font(13), text_color=MUTED, anchor="w")
             self.status.grid(row=0, column=0, sticky="ew")
             self.progress = ctk.CTkProgressBar(bar, mode="indeterminate", progress_color=ACCENT, height=6)
-            tools = ctk.CTkFrame(bar, fg_color="transparent")
-            tools.grid(row=2, column=0, columnspan=3, sticky="w", pady=(10, 0))
-
-            def tool(text, cmd, width=92):
-                b = ctk.CTkButton(tools, text=text, width=width, height=42, font=font(13),
-                                  fg_color="transparent", border_width=2, border_color=ACCENT,
-                                  text_color=ACCENT, hover_color=CARD, command=cmd, state="disabled")
-                b.pack(side="left", padx=(0, 8))
-                return b
-
-            self.undo_btn = tool("↶ 撤销", self._ui_undo, 84)
-            self.redo_btn = tool("↷ 重做", self._ui_redo, 84)
-            self.save_btn = tool("另存为…", self._ui_save)
-            self.folder_btn = tool("打开输出文件夹", self._ui_open_output, 128)
             self.go_btn = ctk.CTkButton(bar, text="开始转换  →", width=170, height=42, font=font(15, "bold"),
                                         fg_color=ACCENT, hover_color=ACCENT_HOVER, command=self._ui_start,
                                         state="disabled")
             self.go_btn.grid(row=0, column=2, padx=(10, 0))
             self.saved_label = ctk.CTkLabel(bar, text="", font=font(12), text_color=MUTED, anchor="w")
             self.saved_label.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(6, 0))
+
+            # brief "已选择…" feedback that fades after a moment
+            self.toast = ctk.CTkLabel(self, text="", font=font(14, "bold"), fg_color=ACCENT,
+                                      text_color="#FFFFFF", corner_radius=10, height=38)
+            self._toast_job = None
+
+            for seq, fn in (("<Control-z>", self._ui_undo), ("<Control-Z>", self._ui_undo),
+                            ("<Control-y>", self._ui_redo), ("<Control-Y>", self._ui_redo),
+                            ("<Control-s>", self._ui_save_current), ("<Control-S>", self._ui_save)):
+                self.bind_all(seq, lambda _e, f=fn: (f(), "break")[1])
 
             self.mode.set(MODES["face"])
 
@@ -389,7 +478,7 @@ def run_gui(screenshot=None):
 
         def _ui_panel(self, parent, title, col):
             card = ctk.CTkFrame(parent, corner_radius=16, fg_color=CARD)
-            card.grid(row=0, column=col, sticky="nsew", padx=(0 if col else 0, 10 if col == 0 else 0))
+            card.grid(row=1, column=col, sticky="nsew", padx=(0 if col else 0, 10 if col == 0 else 0))
             card.grid_rowconfigure(1, weight=1)
             card.grid_columnconfigure(0, weight=1)
             title_label = ctk.CTkLabel(card, text=title, font=font(13, "bold"), text_color=MUTED, anchor="w")
@@ -442,12 +531,12 @@ def run_gui(screenshot=None):
             if mode == "style":
                 self.style_label.grid(row=row, column=0, sticky="w")
                 row += 1
-                self.style_menu.grid(row=row, column=0, sticky="ew", pady=(2, 10))
+                self.style_list.grid(row=row, column=0, sticky="ew", pady=(2, 10))
                 row += 1
             if mode in ("face", "photo") and self.models.looks:
                 self.look_label.grid(row=row, column=0, sticky="w")
                 row += 1
-                self.look_menu.grid(row=row, column=0, sticky="ew", pady=(2, 2))
+                self.look_list.grid(row=row, column=0, sticky="ew", pady=(2, 2))
                 row += 1
                 self.look_hint.grid(row=row, column=0, sticky="w", pady=(0, 10))
                 row += 1
@@ -477,22 +566,51 @@ def run_gui(screenshot=None):
             self._ui_check_dirty()
 
         def _ui_check_dirty(self):
-            """Make it obvious whether the shown result matches the current settings."""
-            key = next((k for k, v in FACE_LOOKS.items() if v[0] == self.look_menu.get()), None)
-            self.look_hint.configure(text=LOOK_HINTS.get(key, ""))
+            """Make it obvious what is selected and whether the shown result still matches it."""
+            self.look_hint.configure(text=LOOK_HINTS.get(self.look_list.get(), ""))
+            mode = self._ui_mode_key()
+            self.current_label.configure(text=selection_summary(mode, self.style_list.get(), self.look_list.get()))
             if self.working:
                 return
-            if self.result is not None and self.sources and self._ui_options() != self.result_opts:
+            stale = stale_message(self.result_opts, self._ui_options()) if (
+                self.result is not None and self.sources) else None
+            if stale:
+                self.stale_text.configure(text=f"⚠ 设置已更改：{stale}")
+                self.stale_bar.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(10, 0))
                 self.go_btn.configure(text="应用新设置  →")
-                self.status.configure(text="设置已更改：点「应用新设置」后才会生效")
+                self.after_panel.title_label.configure(
+                    text=f"效果（旧设置）：{describe_options(self.result_opts)}")
             else:
+                self.stale_bar.grid_remove()
                 self.go_btn.configure(text="开始转换  →")
+                if self.result is not None and self.result_opts:
+                    step = (f"（{self.hist_idx + 1}/{len(self.history)}）" if len(self.history) > 1 else "")
+                    self.after_panel.title_label.configure(
+                        text=f"效果：{describe_options(self.result_opts)} {step}")
+
+        def _ui_selection_changed(self, what):
+            mode = self._ui_mode_key()
+            name = (self.style_list.label() if what == "风格" else self.look_list.label())
+            name = name.replace("（推荐）", "")
+            note = "" if (what == "风格") == (mode == "style") else "（切换到对应模式后生效）"
+            self._ui_toast(f"已选择{what}：{name}{note}")
+            self._ui_check_dirty()
+
+        def _ui_toast(self, text, ms=2200):
+            if self._toast_job is not None:
+                self.after_cancel(self._toast_job)
+            self.toast.configure(text=f"  {text}  ")
+            self.toast.place(relx=0.62, y=196, anchor="n")
+            self.toast.lift()
+            self._toast_job = self.after(ms, self._ui_toast_hide)
+
+        def _ui_toast_hide(self):
+            self._toast_job = None
+            self.toast.place_forget()
 
         def _ui_refresh_models(self):
             m = self.models
-            styles = [style_label(k) for k in m.styles] or ["未找到风格模型"]
-            self.style_menu.configure(values=styles)
-            self.style_menu.set(styles[0])
+            self.style_list.set_items([(k, style_label(k)) for k in m.whole_styles])
             ups = [UPSCALE_NAMES.get(k, k) for k in m.upscalers] or ["未找到超分模型"]
             self.upscale_menu.configure(values=ups)
             self.upscale_menu.set(ups[0])
@@ -504,13 +622,10 @@ def run_gui(screenshot=None):
                 self.upscale.deselect()
                 self.upscale.configure(state="disabled")
             looks = m.looks
-            labels = [FACE_LOOKS[k][0] for k in looks] or ["—"]
-            self.look_menu.configure(values=labels)
-            if self.look_menu.get() not in labels:
-                self.look_menu.set(labels[0])
+            self.look_list.set_items([(k, FACE_LOOKS[k][0]) for k in looks])
             ok, no = "✓", "✗"
             self.model_status.configure(text=(
-                f"模型  {ok if looks else no} 头像/整张照片   {ok if m.styles else no} 风格 {len(m.styles)} 种   "
+                f"模型  {ok if looks else no} 头像/整张照片   {ok if m.whole_styles else no} 风格 {len(m.whole_styles)} 种   "
                 f"{ok if m.upscalers else no} 超分"))
             self._ui_update_options()
 
@@ -527,7 +642,7 @@ def run_gui(screenshot=None):
 
         def _ui_update_ready(self):
             mode = self._ui_mode_key()
-            have = bool(self.models.looks) if mode != "style" else bool(self.models.styles)
+            have = bool(self.models.looks) if mode != "style" else bool(self.models.whole_styles)
             ready = bool(self.sources) and have and not self.working
             self.go_btn.configure(state="normal" if ready else "disabled")
             if not have and not self.working:
@@ -552,6 +667,7 @@ def run_gui(screenshot=None):
             self.history, self.hist_idx = [], -1
             self._ui_update_history()
             self._ui_update_ready()
+            self._ui_check_dirty()
 
         def _ui_load_preview(self, src):
             """Decode off the UI thread and show a small preview, so big photos never freeze the window."""
@@ -568,7 +684,7 @@ def run_gui(screenshot=None):
             mode = self._ui_mode_key()
             style = None
             if mode == "style":
-                style = next((k for k in self.models.styles if style_label(k) == self.style_menu.get()), None)
+                style = self.style_list.get()
             upscale = None
             if self.upscale.get() and self.models.upscalers:
                 upscale = next((k for k in self.models.upscalers
@@ -576,8 +692,8 @@ def run_gui(screenshot=None):
             look = None
             if mode != "style":
                 looks = self.models.looks
-                look = next((k for k in looks if FACE_LOOKS[k][0] == self.look_menu.get()),
-                            looks[0] if looks else "classic")
+                look = self.look_list.get() if self.look_list.get() in looks else (
+                    looks[0] if looks else "classic")
             return dict(mode=mode, style=style, look=look or "classic",
                         size=int(self.size_menu.get()) if mode == "face" else 1024,
                         strength=round(self.strength.get() / 100, 2) if mode != "style" else 1.0,
@@ -710,8 +826,6 @@ def run_gui(screenshot=None):
             array, opts, src, saved = self.history[self.hist_idx]
             self.result, self.result_opts, self.result_src = array, opts, src
             self._ui_show(self.after_panel, Image.fromarray(array))
-            step = f"（{self.hist_idx + 1}/{len(self.history)}）" if len(self.history) > 1 else ""
-            self.after_panel.title_label.configure(text=f"效果：{describe_options(opts)} {step}")
             self.saved_label.configure(text=f"已自动保存：{saved}")
             self._ui_update_history()
             self._ui_check_dirty()
@@ -719,18 +833,26 @@ def run_gui(screenshot=None):
         def _ui_update_history(self):
             idle = not self.working
             has = self.result is not None
-            self.undo_btn.configure(state="normal" if idle and self.hist_idx > 0 else "disabled")
-            self.redo_btn.configure(state="normal" if idle and self.hist_idx < len(self.history) - 1
-                                    else "disabled")
-            self.save_btn.configure(state="normal" if idle and has else "disabled")
-            self.folder_btn.configure(state="normal" if has else "disabled")
+
+            def enable(button, on):
+                button.configure(state="normal" if on else "disabled", fg_color=ACCENT if on else OFF)
+
+            enable(self.undo_btn, idle and self.hist_idx > 0)
+            enable(self.redo_btn, idle and self.hist_idx < len(self.history) - 1)
+            enable(self.quick_save_btn, idle and has)
+            enable(self.save_btn, idle and has)
+            enable(self.folder_btn, has)
 
         def _ui_undo(self):
+            if self.working:
+                return
             if self.hist_idx > 0:
                 self.hist_idx -= 1
                 self._ui_show_history()
 
         def _ui_redo(self):
+            if self.working:
+                return
             if self.hist_idx < len(self.history) - 1:
                 self.hist_idx += 1
                 self._ui_show_history()
@@ -748,9 +870,26 @@ def run_gui(screenshot=None):
             self.status.configure(text=text)
             self._ui_update_ready()
             self._ui_update_history()
+            self._ui_check_dirty()
+
+        def _ui_save_current(self):
+            """Ctrl+S: make sure the result on screen is on disk and say where."""
+            if self.result is None or self.working:
+                return
+            array, opts, src, saved = self.history[self.hist_idx]
+            try:
+                if not Path(saved).is_file():
+                    name = output_name(src, opts["mode"], opts["style"], look=opts["look"])
+                    saved = Path(write_image(unique_path(output_folder(src), name), array, overwrite=False))
+                    self.history[self.hist_idx] = (array, opts, src, saved)
+                self.saved_label.configure(text=f"已保存：{saved}")
+                self.status.configure(text=f"已保存到 {Path(saved).parent}（点「打开输出文件夹」查看）")
+                self._ui_toast(f"已保存：{Path(saved).name}")
+            except Exception as exc:
+                messagebox.showerror("ptoart", friendly_error(exc))
 
         def _ui_save(self):
-            if self.result is None:
+            if self.result is None or self.working:
                 return
             opts = self.result_opts
             name = output_name(self.result_src, opts["mode"], opts["style"], look=opts["look"])
@@ -825,19 +964,40 @@ def _open_path(path):
 
 
 def _demo_and_capture(app, target, Image):
-    """CI helper: render the window with sample images and save a screenshot."""
+    """CI helper: render the window with sample results and save a screenshot.
+
+    Shows two results in the undo history, a selected look and the stale-result banner,
+    so the toolbar and selection state are visible. ``PTOART_SCREENSHOT_IMAGES`` may name
+    ``before;after1;after2`` images to show instead of the synthetic gradients.
+    """
     import numpy as np
 
     y, x = np.mgrid[0:600, 0:480]
     sample = np.dstack([(x * 255 // 480), (y * 255 // 600), np.full_like(x, 180)]).astype(np.uint8)
-    app.geometry("1000x700+10+10")
+    images = [sample, 255 - sample, np.roll(255 - sample, 1, axis=2)]
+    named = os.environ.get("PTOART_SCREENSHOT_IMAGES", "")
+    if named:
+        images = [np.asarray(Image.open(p).convert("RGB")) for p in named.split(";")][:3]
+        images += images[-1:] * (3 - len(images))
+    app.geometry("1180x760+10+10")
     app.update()
-    app._ui_show(app.before, Image.fromarray(sample))
-    app._ui_show(app.after_panel, Image.fromarray(255 - sample))
+    app.sources = [Path("baby.jpg")]
+    app._ui_show(app.before, Image.fromarray(images[0]))
+    looks = app.models.looks or ["classic"]
+    first = dict(mode="face", style=None, look=looks[0], size=1024, strength=1.0, transparent=False,
+                 upscale=None)
+    second = dict(first, look=looks[1] if len(looks) > 1 else looks[0])
+    app.history = [(images[1], first, Path("baby.jpg"), Path("ptoart输出/baby-头像-1.png")),
+                   (images[2], second, Path("baby.jpg"), Path("ptoart输出/baby-头像-2.png"))]
+    app.hist_idx = 1
+    app._ui_show_history()
+    if len(looks) > 2:
+        app.look_list.select(looks[2], notify=True)  # selection changed after the result: stale
+    app._ui_update_ready()
     app.status.configure(text="预览截图（CI）")
     app.lift()
     app.attributes("-topmost", True)
-    for _ in range(20):
+    for _ in range(30):
         app.update()
     from PIL import ImageGrab
 

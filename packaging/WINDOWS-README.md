@@ -12,6 +12,7 @@
 | `ptoart_weights.pt` | 必需（卡通头像、整张照片） | `weights\` |
 | `seg_model_384.pb` | 必需（卡通头像、整张照片） | `weights\` |
 | `ptoart-styles.zip` | 强烈推荐（11 种风格，含 4 种头像画风） | 解压到 `weights\styles\` |
+| `ptoart-dctnet.zip` | 推荐（DCT 日漫 / DCT 3D / DCT 手绘 画风，宝宝、儿童照片最自然） | 解压到 `weights\styles\` |
 | `ptoart-upscalers-realesrgan.zip` | 可选（更清晰） | 解压到 `weights\upscale\` |
 
 右键 ZIP →「全部解压缩」。**请保留整个 `ptoart` 文件夹**（`ptoart.exe` 必须和 `_internal` 在一起），不要在压缩包里直接运行。放好后像这样：
@@ -23,7 +24,7 @@ ptoart\
 └── weights\
     ├── ptoart_weights.pt
     ├── seg_model_384.pb
-    ├── styles\hayao.onnx、jp_face.onnx …  （11 个风格/画风）
+    ├── styles\hayao.onnx、jp_face.onnx、dct_3d.onnx …  （风格/画风，含 DCT-Net）
     ├── upscale\anime.onnx …               （可选，超分）
     └── torch\                              （人脸检测模型，已附带，勿删）
     └── upscale\anime.onnx、general.onnx
@@ -40,9 +41,9 @@ ptoart\
    - **卡通头像**：最大一张脸的方形头像，可选尺寸 512 / 1024 / 2048、卡通强度、透明背景；
    - **整张照片**：所有人脸卡通化后贴回原图，身体和背景保持原样；
    - **整图风格**：整张图变成宫崎骏、新海诚等画风（风景、全身照都可以，不需要人脸）。
-5. 头像和整张照片可选「画风」：**动漫脸（推荐）**、**日漫二次元**、**吉卜力人像**、**黑白素描**五官自然不变形，适合小朋友和长辈；**经典卡通**线条更夸张。前四种来自风格包 `ptoart-styles.zip`。
+5. 头像和整张照片在「头像画风」列表里点一下即选中：选中项变成蓝底并带 ✓，窗口顶部常驻显示「✓ 头像画风：…」，切换时还会短暂提示「已选择…」。可选 **动漫脸（推荐）**、**DCT 日漫**、**DCT 3D**、**DCT 手绘**、**日漫二次元**、**吉卜力人像**、**黑白素描**（五官自然不变形，适合小朋友和长辈）和 **经典卡通**（线条更夸张）。**宝宝、儿童照片优先试 DCT 3D 或 DCT 日漫**；DCT 画风在「整张照片」模式下连背景一起卡通化。DCT 画风来自 `ptoart-dctnet.zip`，其余来自风格包 `ptoart-styles.zip`。
 6. 放了超分模型时，「超分辨率增强」开关会自动打开，结果更清晰（稍慢）。
-7. 点「开始转换 →」。每次的结果都会**自动保存**到照片旁的 `ptoart输出` 文件夹（窗口底部显示完整路径，点「打开输出文件夹」直接打开）；「↶ 撤销 / ↷ 重做」在几次结果间切换，「另存为…」存到别处。效果图上方会写明用的是哪个模式、画风和强度；改了设置后按钮会变成「应用新设置」。
+7. 点「开始转换 →」。每次的结果都会**自动保存**到照片旁的 `ptoart输出` 文件夹（窗口底部显示完整路径）。窗口**顶部工具栏**：**「↶ 撤销」Ctrl+Z**、**「↷ 重做」Ctrl+Y** 在几次结果间切换（没有可撤销/重做时变灰）；**「保存」Ctrl+S** 确认当前结果已保存并显示保存位置；**「另存为…」** 存到别处；**「打开输出文件夹」**。效果图上方写明用的是哪个模式、画风和强度；出图后再改画风或设置，会出现黄色提示「设置已更改」和 **「用新设置重新生成」** 按钮。
 
 人脸检测模型已打包在 `weights\torch` 里，**无需联网**；启动时后台加载一次（底部显示「模型已就绪」），之后切换画风、强度都不再重新加载。
 
@@ -54,7 +55,7 @@ ptoart\
 - **提示缺少模型**：文件名必须一字不差（下载时别变成 `ptoart_weights (1).pt`），放在 `weights` 里，然后点「重新检测模型」。
 - **没检测到人脸**：换清晰、正面、光线好的照片；只想要动漫画风可以选「整图风格」。
 - **很慢**：纯 CPU 运行，大图 + 超分可能十几秒到一分钟，属正常。
-- **能商用吗**：卡通头像（MIT）和超分（Real-ESRGAN，BSD-3）可以；**动漫风格（AnimeGANv2）仅限非商业用途**。
+- **能商用吗**：卡通头像（MIT）、DCT 画风（阿里达摩院 [DCT-Net](https://github.com/menyifang/DCT-Net)，[ModelScope](https://modelscope.cn/models/damo/cv_unet_person-image-cartoon_compound-models)，Apache-2.0）和超分（Real-ESRGAN，BSD-3）可以；**动漫风格（AnimeGANv2）仅限非商业用途**。
 
 <details>
 <summary><b>进阶：命令行用法（可选，普通用户不需要）</b></summary>
@@ -116,7 +117,7 @@ cd "C:\ptoart"
 .\ptoart.exe convert .\street.jpg .\output\street-hayao.jpg --style hayao --model-dir .\weights
 ```
 
-加 `--upscale anime` 用 Real-ESRGAN 超分放大，例如 `--size 1024 --upscale anime`。`--output photo` 把每张人脸卡通化后贴回原图（`--max-faces` 默认 10）。`--style` 需要把风格模型放到 `weights\styles\`：hayao（宫崎骏）、shinkai（新海诚）、paprika、celeba_distill、face_paint_512_v1、face_paint_512_v2、hayao_v3、shinkai_v3、jp_face（日漫二次元）、ghibli_face（吉卜力人像）、portrait_sketch（黑白素描），Release 中的 `ptoart-styles.zip` 已包含全部风格（仅限非商业用途）。头像/整张照片加 `--style jp_face` 等即换画风，例如 `ptoart.exe convert 宝宝.jpg 宝宝头像.png --style face_paint_512_v2 --size 1024`。
+加 `--upscale anime` 用 Real-ESRGAN 超分放大，例如 `--size 1024 --upscale anime`。`--output photo` 把每张人脸卡通化后贴回原图（`--max-faces` 默认 10）。`--style` 需要把风格模型放到 `weights\styles\`：hayao（宫崎骏）、shinkai（新海诚）、paprika、celeba_distill、face_paint_512_v1、face_paint_512_v2、hayao_v3、shinkai_v3、jp_face（日漫二次元）、ghibli_face（吉卜力人像）、portrait_sketch（黑白素描），Release 中的 `ptoart-styles.zip` 已包含全部风格（仅限非商业用途）。头像/整张照片加 `--style jp_face` 等即换画风，例如 `ptoart.exe convert 宝宝.jpg 宝宝头像.png --style face_paint_512_v2 --size 1024`；也可以按画风名用 `--look`（`paint`、`dct_anime`、`dct_3d`、`dct_handdrawn`、`jp`、`ghibli`、`sketch`、`classic`），例如 `ptoart.exe convert 宝宝.jpg 宝宝3D.png --look dct_3d --size 1024`。
 
 ONNX：准备 `ptoart_weights.onnx`，检查与转换都加 `--backend onnx`。普通照片仍需要 `seg_model_384.pb` 及人脸预处理：
 

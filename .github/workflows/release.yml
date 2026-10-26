@@ -73,8 +73,30 @@ jobs:
         with:
           name: ptoart-models
           path: models-out/*
+  dctnet:
+    # DCT-Net (Alibaba DAMO Academy, Apache-2.0): TF frozen graphs -> ONNX. Separate job with
+    # its own pinned TensorFlow/tf2onnx so the other model exports keep their versions.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install converter
+        run: pip install "tensorflow-cpu==2.15.1" "tf2onnx==1.16.1" "numpy<2" "onnx==1.16.2" "protobuf<4" onnxruntime
+      - name: Convert DCT-Net (anime, 3d, handdrawn) and package ptoart-dctnet.zip
+        run: |
+          python tools/export_dctnet.py anime 3d handdrawn -o dctnet --cache .dctnet-src
+          cp packaging/dctnet/README-DCT-Net.txt packaging/dctnet/LICENSE-DCT-Net-Apache-2.0.txt dctnet/
+          mkdir -p models-out
+          (cd dctnet && zip -9 ../models-out/ptoart-dctnet.zip *.onnx README-DCT-Net.txt LICENSE-DCT-Net-Apache-2.0.txt)
+          cd models-out && sha256sum ptoart-dctnet.zip > SHA256SUMS-dctnet.txt && ls -la
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ptoart-dctnet
+          path: models-out/*
   publish:
-    needs: [windows, android, models]
+    needs: [windows, android, models, dctnet]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -102,6 +124,7 @@ jobs:
             dist/ptoart_weights.onnx
             dist/seg_model_384.pb
             dist/ptoart-styles.zip
+            dist/ptoart-dctnet.zip
             dist/ptoart-upscalers-realesrgan.zip
             dist/SHA256SUMS-all.txt
           fail_on_unmatched_files: true
