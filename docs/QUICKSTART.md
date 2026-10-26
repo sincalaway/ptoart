@@ -44,14 +44,14 @@
 | `ptoart_weights.pt` | 必需（头像、整张照片） |
 | `seg_model_384.pb` | 必需（头像、整张照片） |
 | `ptoart-styles.zip` | 强烈推荐（11 种风格，含 4 种头像画风） |
-| `ptoart-dctnet.zip` | 推荐（DCT 日漫 / 3D / 手绘画风，拍宝宝、小朋友最自然） |
+| `ptoart-dctnet.zip` | Windows 不用下：DCT 日漫 / 3D / 手绘画风已内置在 Windows 包里 |
 | `ptoart-upscalers-realesrgan.zip` | 可选（更清晰） |
 
 **步骤：**
 
 1. 右键 `ptoart-windows-x64.zip` → **全部解压缩**，比如解压到 `C:\ptoart`。不要在压缩包里直接运行。
 2. 把 `ptoart_weights.pt` 和 `seg_model_384.pb` 放进 `C:\ptoart\ptoart\weights` 文件夹。
-3. （可选）把风格 zip 和 `ptoart-dctnet.zip` 都解压到 `weights\styles`，把超分 zip 解压到 `weights\upscale`。最终像这样：
+3. （可选）把风格 zip 解压到 `weights\styles`（DCT 画风已内置在里面），把超分 zip 解压到 `weights\upscale`。最终像这样：
 
    ```text
    ptoart\

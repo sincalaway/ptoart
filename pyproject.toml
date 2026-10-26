@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ptoart"
-version = "0.3.9"
+version = "0.3.10"
 description = "ptoart: portrait to cartoon avatar, anime style and super-resolution"
 readme = "README.md"
 requires-python = ">=3.10"

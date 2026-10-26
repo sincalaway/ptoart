@@ -7,13 +7,17 @@
 | 头像生成器 | `ptoart_weights.pt` | Windows 默认后端（MIT） |
 | 人像分割 | `seg_model_384.pb` | Windows 头像/整张照片模式必需 |
 | 头像生成器 ONNX | `ptoart_weights.onnx` | 安卓必需；Windows `--backend onnx` 可选 |
-| DCT-Net 画风 | `ptoart-dctnet.zip` | DCT 日漫、DCT 3D、DCT 手绘 3 种头像/整张照片画风（阿里达摩院 DCT-Net，Apache-2.0，可商用）。Windows 解压到 `weights\styles\`，安卓解压后多选导入 |
-| 风格模型 | `ptoart-styles.zip` | 11 种 AnimeGANv2/v3 风格 ONNX，含动漫脸、日漫二次元、吉卜力人像、黑白素描 4 种头像画风（仅限非商业用途）。Windows 解压到 `weights\styles\`，安卓解压后多选导入 |
+| DCT-Net 画风 | `ptoart-dctnet.zip` | DCT 日漫、DCT 3D、DCT 手绘 3 种头像/整张照片画风（阿里达摩院 DCT-Net，Apache-2.0，可商用）。**Windows 包已内置**，无需另外下载；安卓解压后多选导入 |
+| 风格模型 | `ptoart-styles.zip` | 11 种 AnimeGANv2/v3 风格 ONNX，含动漫脸、日漫二次元、吉卜力人像、黑白素描 4 种头像画风（仅限非商业用途）。**Windows 包已内置**，无需另外下载；安卓解压后多选导入 |
 | 超分模型 | `ptoart-upscalers-realesrgan.zip` | Real-ESRGAN `anime`、`general` x4（BSD-3） |
 
-## 本版更新（v0.3.9）
+## 本版更新（v0.3.10）
 
-**新画风：DCT-Net（宝宝、儿童照片推荐）**。来自阿里巴巴达摩院开源的 [DCT-Net](https://github.com/menyifang/DCT-Net)（[ModelScope](https://modelscope.cn/models/damo/cv_unet_person-image-cartoon_compound-models)，Apache-2.0），纯 CPU、模型小（每个约 6 MB）。下载 `ptoart-dctnet.zip`，解压到 `weights\styles\` 后在「头像画风」里出现：
+- **DCT 画风直接内置进 Windows 包**：解压 `ptoart-windows-x64.zip` 后 `weights\styles\` 里已经有 DCT 日漫 / DCT 3D / DCT 手绘，打开就能选，不用再单独下载 `ptoart-dctnet.zip`（安卓仍需单独下载导入）。
+
+## v0.3.9 更新
+
+**新画风：DCT-Net（宝宝、儿童照片推荐）**。来自阿里巴巴达摩院开源的 [DCT-Net](https://github.com/menyifang/DCT-Net)（[ModelScope](https://modelscope.cn/models/damo/cv_unet_person-image-cartoon_compound-models)，Apache-2.0），纯 CPU、模型小（每个约 6 MB）。Windows 包已内置（安卓下载 `ptoart-dctnet.zip` 导入），在「头像画风」里出现：
 
 | 画风 | 模型文件 | 适合 |
 | --- | --- | --- |
@@ -57,7 +61,7 @@
 
 - 头像、分割、风格、超分模型单独附在本 Release：Windows 把 `.pt`、`.pb` 放进 EXE 旁的 `weights\`；安卓导入 `.onnx`。Windows 包已内置人脸检测模型（`weights\torch`），无需联网。
 - Windows 版需要 `ptoart_weights.pt` + `seg_model_384.pb`；安卓版只需 `ptoart_weights.onnx`（人脸检测与人像分割使用内置 ML Kit 模型）。
-- 风格包（整图风格 + 4 种头像画风）：解压 `ptoart-styles.zip`，Windows 放到 `weights\styles\`；安卓在 App 中「导入模型」多选导入。`ptoart-dctnet.zip`（DCT 画风）同样处理。
+- 风格包（整图风格 + 4 种头像画风）：解压 `ptoart-styles.zip`，Windows 放到 `weights\styles\`；安卓在 App 中「导入模型」多选导入。DCT 画风已内置在 Windows 包里；安卓把 `ptoart-dctnet.zip` 解压后同样导入。
 - 许可：头像生成器 MIT（minivision-ai/photo2cartoon）；DCT 画风 Apache-2.0（阿里达摩院 DCT-Net，menyifang/DCT-Net，ModelScope；仅转换为 ONNX，权重未改动，zip 内附许可）；超分 BSD-3；AnimeGANv2/v3 仅限非商业用途。
 - 安卓 APK 使用调试签名，安装时需允许“未知来源”；EXE 未签名。
 - 这是预览版：自动构建与自检已通过，真实照片 + 官方权重的出图效果未做完整验收。

@@ -4,7 +4,7 @@
 
 **第一次用？看 [小白使用教程](docs/QUICKSTART.md)** · [English](README_EN.md) · [Windows 便携版说明](packaging/WINDOWS-README.md) · [模型准备](docs/MODELS.md) · [模型下载（Release）](https://github.com/sincalaway/ptoart/releases/latest)
 
-> 当前版本 0.3.9（新增阿里达摩院 DCT-Net 画风：DCT 日漫 / DCT 3D / DCT 手绘，宝宝和儿童照片不变形）。Windows 双击即开图形界面，安卓 App 导入模型即可用；所有模型都在 [Release](https://github.com/sincalaway/ptoart/releases/latest) 中下载。
+> 当前版本 0.3.10（阿里达摩院 DCT-Net 画风 DCT 日漫 / DCT 3D / DCT 手绘 已直接内置在 Windows 包里，宝宝和儿童照片不变形）。Windows 双击即开图形界面，安卓 App 导入模型即可用；所有模型都在 [Release](https://github.com/sincalaway/ptoart/releases/latest) 中下载。
 
 ## 先了解能做什么
 
@@ -44,7 +44,7 @@
 | 黑白素描 | `sketch` | `portrait_sketch` | 黑白线稿 |
 | 经典卡通 | `classic`（或不加 `--style`） | `ptoart_weights.pt/.onnx` | photo2cartoon 原版，线条夸张，儿童照片易变形 |
 
-DCT 画风在 `ptoart-dctnet.zip` 里（与风格包解压到同一个 `weights\styles\`）。DCT-Net 自带头部/背景两个模型：头像模式把对齐后的人脸裁图按 DCT-Net 的 288×288 头部模型推理；整张照片模式先用背景模型把整张图卡通化，再把头部结果按人像分割羽化贴回，和 DCT-Net 官方流程一致（人脸检测、对齐沿用 ptoart 自己的）。DCT 背景模型也作为整图风格「DCT 日漫 / DCT 3D / DCT 手绘」出现。自己转换：`python tools/export_dctnet.py -o weights/styles`（需要 `tensorflow==2.15.*`、`tf2onnx`）。
+DCT 画风已内置在 Windows 包的 `weights\styles\` 里；安卓和源码用户用 `ptoart-dctnet.zip`（解压到 `weights/styles/` 或在 App 里导入）。DCT-Net 自带头部/背景两个模型：头像模式把对齐后的人脸裁图按 DCT-Net 的 288×288 头部模型推理；整张照片模式先用背景模型把整张图卡通化，再把头部结果按人像分割羽化贴回，和 DCT-Net 官方流程一致（人脸检测、对齐沿用 ptoart 自己的）。DCT 背景模型也作为整图风格「DCT 日漫 / DCT 3D / DCT 手绘」出现。自己转换：`python tools/export_dctnet.py -o weights/styles`（需要 `tensorflow==2.15.*`、`tf2onnx`）。
 
 AnimeGAN 画风以 512 分辨率推理；经典卡通生成器只在 256×256 推理。更大的 `--size` 默认用 Lanczos + 轻度锐化放大；加 `--upscale anime` 则用 Real-ESRGAN 超分，能补出清晰线条。透明边缘和强度混合始终使用原分辨率。重构未消除上游训练数据的人群偏差。
 
@@ -64,8 +64,8 @@ AnimeGAN 画风以 512 分辨率推理；经典卡通生成器只在 256×256 �
 | `ptoart_weights.pt` | 约 144 MB | 卡通头像生成器（Torch，Windows 默认后端） | `weights\` | 不需要 |
 | `seg_model_384.pb` | 约 32 MB | 人像分割（Windows 头像/整张照片模式必需） | `weights\` | 不需要（用内置 ML Kit） |
 | `ptoart_weights.onnx` | 约 18 MB | 卡通头像生成器（ONNX，安卓必需；Windows 加 `--backend onnx` 时用） | `weights\`（可选） | 导入 |
-| `ptoart-styles.zip` | 约 71 MB | 11 种风格（含动漫脸、日漫二次元、吉卜力人像、黑白素描 4 种头像画风） | 解压到 `weights\styles\` | 解压后多选导入 |
-| `ptoart-dctnet.zip` | 约 27 MB | DCT-Net 画风：DCT 日漫、DCT 3D、DCT 手绘（Apache-2.0，可商用） | 解压到 `weights\styles\` | 解压后多选导入 |
+| `ptoart-styles.zip` | 约 71 MB | 11 种风格（含动漫脸、日漫二次元、吉卜力人像、黑白素描 4 种头像画风） | Windows 包已内置，无需下载 | 解压后多选导入 |
+| `ptoart-dctnet.zip` | 约 27 MB | DCT-Net 画风：DCT 日漫、DCT 3D、DCT 手绘（Apache-2.0，可商用） | Windows 包已内置，无需下载 | 解压后多选导入 |
 | `ptoart-upscalers-realesrgan.zip` | 约 7 MB | 超分辨率放大：`anime`（卡通，快）、`general`（通用） | 解压到 `weights\upscale\` | 导入一个（推荐 anime） |
 
 目录示例：

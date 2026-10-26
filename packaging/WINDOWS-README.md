@@ -12,7 +12,7 @@
 | `ptoart_weights.pt` | 必需（卡通头像、整张照片） | `weights\` |
 | `seg_model_384.pb` | 必需（卡通头像、整张照片） | `weights\` |
 | `ptoart-styles.zip` | 强烈推荐（11 种风格，含 4 种头像画风） | 解压到 `weights\styles\` |
-| `ptoart-dctnet.zip` | 推荐（DCT 日漫 / DCT 3D / DCT 手绘 画风，宝宝、儿童照片最自然） | 解压到 `weights\styles\` |
+| `ptoart-dctnet.zip` | DCT 日漫 / DCT 3D / DCT 手绘 画风，宝宝、儿童照片最自然 | 已内置在 Windows 包的 `weights\styles\`，无需另外下载（安卓用户才需要单独下载） |
 | `ptoart-upscalers-realesrgan.zip` | 可选（更清晰） | 解压到 `weights\upscale\` |
 
 右键 ZIP →「全部解压缩」。**请保留整个 `ptoart` 文件夹**（`ptoart.exe` 必须和 `_internal` 在一起），不要在压缩包里直接运行。放好后像这样：
